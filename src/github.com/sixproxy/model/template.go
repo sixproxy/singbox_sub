@@ -129,28 +129,70 @@ const (
 type DelegateParseNodesFunc func(nodes []string) []string
 
 func (cfg *Config) nodesWithHttpGet(delegateParse DelegateParseNodesFunc) []string {
-	// 获取订阅地址
+	// 检查订阅地址是否有效
+	if len(cfg.Subs) == 0 {
+		logger.Error("没有配置订阅地址")
+		return []string{}
+	}
+
 	url := cfg.Subs[0].URL
+	if url == "" {
+		logger.Error("订阅地址为空，请在 config.yaml 中设置有效的订阅 URL")
+		return []string{}
+	}
+
+	logger.Info("正在获取订阅内容: %s", url)
 	resp, err := http.Get(url)
 	if err != nil {
-		logger.Error("无法解析到订阅节点: %v", err)
-		panic(err)
+		logger.Error("无法获取订阅内容: %v", err)
+		return []string{}
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(err)
+	// 检查HTTP响应状态
+	if resp.StatusCode != 200 {
+		logger.Error("订阅服务器返回错误状态: %d %s", resp.StatusCode, resp.Status)
+		return []string{}
 	}
 
-	// 解码 base64
-	decoded, err := base64.StdEncoding.DecodeString(string(body))
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		logger.Error("读取订阅内容失败: %v", err)
+		return []string{}
+	}
+
+	if len(body) == 0 {
+		logger.Error("订阅内容为空")
+		return []string{}
+	}
+
+	// 尝试解码 base64
+	bodyStr := string(body)
+	decoded, err := base64.StdEncoding.DecodeString(bodyStr)
+	if err != nil {
+		logger.Warn("订阅内容不是 base64 编码，尝试直接解析: %v", err)
+		// 如果不是 base64，直接使用原内容
+		decoded = body
 	}
 
 	nodes := strings.Split(string(decoded), "\n")
-	configNodes := delegateParse(nodes)
+	
+	// 过滤空行
+	var validNodes []string
+	for _, node := range nodes {
+		node = strings.TrimSpace(node)
+		if node != "" {
+			validNodes = append(validNodes, node)
+		}
+	}
+
+	if len(validNodes) == 0 {
+		logger.Error("订阅内容中没有找到有效的节点")
+		return []string{}
+	}
+
+	logger.Info("从订阅中获取到 %d 个节点", len(validNodes))
+	configNodes := delegateParse(validNodes)
 
 	return configNodes
 }
