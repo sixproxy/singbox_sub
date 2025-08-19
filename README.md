@@ -4,7 +4,7 @@
 
 ## ✨ 特性
 
-- 🔧 **多协议支持**: Shadowsocks、Hysteria2、Trojan
+- 🔧 **多协议支持**: Shadowsocks、Hysteria2、Trojan、AnyTLS
 - 🌐 **智能 DNS**: 自动检测运营商 DNS
 - 🚀 **CDN 优化**: 城市级精确定位，自动设置 client_subnet
 - ⚙️ **配置系统**: YAML 配置覆盖，简化使用
@@ -35,11 +35,32 @@ dns:
 ```
 
 ### 2. 运行程序
-
+- 最常使用
 ```bash
 # 运行
 ./sub
 ```
+
+### 3. 其他命令
+- 查看命令行帮助
+```bash
+./sub -h
+```
+- 仅生成Linux配置，不执行部署
+```bash
+./sub -os linux
+```
+- 仅生成Mac配置，不执行部署
+```bash
+./sub -os darwin
+```
+- 在Linux上生成所有配置（只会自动部署Linux配置）
+```bash
+./sub -os all
+```
+
+
+
 
 Linux系统生成的配置文件: `linux_config.json`
 Mac系统生成的配置文件: `mac_config.json`
@@ -72,13 +93,6 @@ docker run -v $(pwd)/config.yaml:/app/config.yaml singbox-sub
 ```
 
 ## 📦 安装
-
-### Homebrew (macOS)
-```bash
-brew tap sixproxy/tap
-brew install singbox-sub
-```
-
 ### 下载二进制
 前往 [Releases](https://github.com/sixproxy/singbox_sub/releases) 下载对应平台的预编译版本。
 
@@ -95,10 +109,6 @@ brew install singbox-sub
 - `auto_optimize`: 启用自动 DNS 和 CDN 优化.如果启用,自动设置client_subnet
 - `client_subnet`: 手动指定 ECS 网段
 - `final`: DNS 最终服务器
-
-### 实验功能
-- `clash_api`: Clash API 配置
-  - `external_controller`: 控制器地址
 
 ## 🤝 贡献
 

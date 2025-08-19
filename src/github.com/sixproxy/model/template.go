@@ -229,6 +229,8 @@ func getNodeType(node string) string {
 		return constant.OUTBOUND_HY2
 	case strings.Contains(node, constant.OUTBOUND_TROJAN):
 		return constant.OUTBOUND_TROJAN
+	case strings.Contains(node, constant.OUTBOUND_ANYTLS):
+		return constant.OUTBOUND_ANYTLS
 	case strings.Contains(node, constant.OUTBOUND_SELECTOR):
 		return constant.OUTBOUND_SELECTOR
 	case strings.Contains(node, constant.OUTBOUND_URLTEST):
