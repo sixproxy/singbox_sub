@@ -34,6 +34,7 @@ dns:
 - 最常使用
 ```bash
 # 运行
+chmod +x sub
 ./sub
 ```
 
