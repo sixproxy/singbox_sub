@@ -1,0 +1,220 @@
+name: Build Multi-Platform Binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - goos: linux
+            goarch: amd64
+            output: sub
+          - goos: linux
+            goarch: arm64
+            output: sub
+          - goos: linux
+            goarch: "386"
+            output: sub
+          - goos: linux
+            goarch: arm
+            goarm: 7
+            output: sub
+
+          # Windows
+          - goos: windows
+            goarch: amd64
+            output: sub.exe
+          - goos: windows
+            goarch: "386"
+            output: sub.exe
+          - goos: windows
+            goarch: arm64
+            output: sub.exe
+
+          # macOS
+          - goos: darwin
+            goarch: amd64
+            output: sub
+          - goos: darwin
+            goarch: arm64
+            output: sub
+
+          # FreeBSD
+          - goos: freebsd
+            goarch: amd64
+            output: sub
+          - goos: freebsd
+            goarch: "386"
+            output: sub
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum', '**/go.mod') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: |
+          go test ./src/github.com/sixproxy/protocol -v
+          go test ./src/github.com/sixproxy/model -v
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          go build -v -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name || github.sha }}" -o dist/${{ matrix.output }} ./src/github.com/sixproxy
+
+      # 新增：把二进制重命名为唯一名字，防止 artifact 相互覆盖
+      - name: Rename binary with platform suffix for artifact
+        run: |
+          suffix="${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ -n "${{ matrix.goarm }}" ]; then suffix="${suffix}v${{ matrix.goarm }}"; fi
+          mv dist/${{ matrix.output }} dist/sub_${suffix}${{ endsWith(matrix.output, '.exe') && '.exe' || '' }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sub_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.goarm && 'v' }}${{ matrix.goarm }}${{ endsWith(matrix.output, '.exe') && '.exe' || '' }}
+          path: dist/*
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find artifacts -type f -name "sub_*" -exec cp {} release/ \;
+
+          # 复制 config 目录和 bash 脚本目录
+          cp -r config release/
+          cp -r bash release/
+
+          # 在 release 目录内生成校验和
+          cd release
+          sha256sum sub_* > SHA256SUMS
+
+          # 为每个平台单独打包
+          for bin in sub_*; do
+            platform="${bin#sub_}"  # 去掉前缀
+            platform="${platform%.exe}"  # 去掉 .exe 后缀
+
+            # 创建临时目录
+            mkdir -p "$platform"
+            cp "$bin" "$platform/"
+            cp -r config "$platform/"
+            cp -r bash "$platform/"
+            
+            # 设置 bash 脚本执行权限（非Windows平台）
+            if [[ "$bin" != *.exe ]]; then
+              chmod +x "$platform/bash/"*.sh
+            fi
+
+            if [[ "$bin" == *.exe ]]; then
+              # Windows
+              mv "$platform/$bin" "$platform/sub.exe"
+              zip -r "sub-${platform}.zip" "$platform/"
+            else
+              # Linux / macOS / FreeBSD
+              mv "$platform/$bin" "$platform/sub"
+              tar -czf "sub-${platform}.tar.gz" "$platform/"
+            fi
+
+            # 清理临时目录
+            rm -rf "$platform"
+          done
+
+          # 删除原始二进制，只保留压缩包
+          rm sub_*
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release/*
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'rc') || contains(github.ref, 'alpha') }}
+          generate_release_notes: true
+          body: |
+            ## 🚀 Release ${{ github.ref_name }}
+
+            ### 📦 Binaries
+            - **Linux**: amd64, arm64, 386, armv7
+            - **Windows**: amd64, 386, arm64
+            - **macOS**: amd64 (Intel), arm64 (Apple Silicon)
+            - **FreeBSD**: amd64, 386
+
+            ### 📂 Package Contents
+            下载压缩包后，将包含：
+            - 二进制文件 `sub`（或 Windows 下的 `sub.exe`）
+            - 项目内置的 `config` 目录（含示例配置）
+            - Linux 自动化脚本 `bash` 目录（含启动/停止脚本）
+
+            ### 📋 Usage
+            1. 下载并解压对应平台压缩包
+            2. Linux/macOS 执行 `chmod +x sub`（bash脚本已自动设置执行权限）
+            3. 运行 `./sub` 即可启动
+            4. Linux系统会自动执行服务管理和配置部署
+
+            ### 🔒 Verification
+            校验文件完整性：
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+
+            ### 🆕 What's New
+            详见 GitHub 提交历史。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: always() && startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Notification
+        run: |
+          if [[ "${{ needs.build.result }}" == "success" && "${{ needs.release.result }}" == "success" ]]; then
+            echo "✅ Build and release completed successfully!"
+            echo "🎉 New release ${{ github.ref_name }} is now available!"
+          else
+            echo "❌ Build or release failed!"
+            exit 1
+          fi

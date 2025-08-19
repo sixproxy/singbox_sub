@@ -1,0 +1,47 @@
+# Git files
+.git/
+.gitignore
+.github/
+
+# Documentation
+README.md
+*.md
+docs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*_test.go
+test_*.go
+debug_*.go
+
+# Build artifacts
+dist/
+build/
+bin/
+*.exe
+singbox_sub
+singbox_config.json
+
+# Logs
+*.log
+
+# Dependencies (will be downloaded in container)
+vendor/
+
+# Coverage files
+*.out
+coverage.*
+
+# Temporary files
+tmp/
+temp/

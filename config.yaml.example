@@ -1,0 +1,17 @@
+# SingBox 配置文件示例
+# 复制此文件为 config.yaml 并填入你的配置
+
+subs:
+  - url: "YOUR_SUBSCRIPTION_URL_HERE"           # 你的订阅链接
+    insecure: false                             # 是否跳过SSL验证
+    prefix: ""                                  # 节点名称前缀（可选）
+    enabled: true                               # 是否启用（可选）
+
+experimental:
+  clash_api:
+    external_controller: "127.0.0.1:9090"      # Clash API 控制器地址
+
+dns:
+  auto_optimize: true                           # 自动获取本地DNS和CDN优化
+  # client_subnet: "202.101.170.0/24"          # 手动指定client_subnet（可选）
+  # final: "dns_proxy"                          # DNS最终服务器（可选）
