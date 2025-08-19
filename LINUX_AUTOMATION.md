@@ -28,10 +28,10 @@
 
 ```bash
 # 完整自动化部署（推荐）
-./singbox_sub
+./sub
 
 # 详细模式查看部署过程
-./singbox_sub -v
+./sub -v
 
 # 执行流程：
 # 1. 停止sing-box服务 -> bash/stop_singbox.sh
@@ -44,20 +44,20 @@
 
 ```bash
 # 仅生成Linux配置，不执行部署
-./singbox_sub -os linux
+./sub -os linux
 
 # 生成所有配置
-./singbox_sub -os all
+./sub -os all
 ```
 
 ### 特殊场景
 
 ```bash
 # 在Linux上生成macOS配置（不会自动部署）
-./singbox_sub -os darwin
+./sub -os darwin
 
 # 在Linux上生成所有配置（只会自动部署Linux配置）
-./singbox_sub -os all
+./sub -os all
 ```
 
 ## 必需的文件
@@ -75,7 +75,7 @@
 
 ### 完整自动化流程
 ```bash
-./singbox_sub -v
+./sub -v
 ```
 
 输出示例：
@@ -114,10 +114,10 @@
 **1. 权限不足**
 ```bash
 # 使用sudo运行
-sudo ./singbox_sub
+sudo ./sub
 
 # 或者给程序设置适当权限
-chmod +x ./singbox_sub
+chmod +x ./sub
 ```
 
 **2. 脚本缺失**
@@ -166,16 +166,16 @@ chmod +x bash/*.sh
 sudo cp /etc/sing-box/config.json /etc/sing-box/config.json.backup
 
 # 3. 执行部署
-./singbox_sub -v
+./sub -v
 ```
 
 ### 2. 日常更新
 ```bash
 # 简单更新配置
-./singbox_sub
+./sub
 
 # 或详细查看过程
-./singbox_sub -v
+./sub -v
 ```
 
 ### 3. 故障恢复
