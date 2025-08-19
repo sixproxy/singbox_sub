@@ -55,7 +55,7 @@ type ClashAPI struct {
 
 type CacheFile struct {
 	Enabled bool   `json:"enabled"`
-	Path    string `json:"path"`
+	Path    string `json:"path,omitempty"`
 }
 
 // --- dns -------------------------------------------------
@@ -68,13 +68,13 @@ type DNSConfig struct {
 }
 
 type DNSServer struct {
-	Tag             string `json:"tag"`
-	Type            string `json:"type"`
-	Server          string `json:"server,omitempty"`
-	Detour          string `json:"detour,omitempty"`
-	Address         string `json:"address,omitempty"`
-	AddressStrategy string `json:"address_strategy,omitempty"`
-	Strategy        string `json:"strategy,omitempty"`
+	Tag             string  `json:"tag"`
+	Type            *string `json:"type,omitempty"`
+	Server          string  `json:"server,omitempty"`
+	Detour          string  `json:"detour,omitempty"`
+	Address         string  `json:"address,omitempty"`
+	AddressStrategy string  `json:"address_strategy,omitempty"`
+	Strategy        string  `json:"strategy,omitempty"`
 }
 
 type DNSRule struct {
@@ -95,7 +95,7 @@ type Inbound struct {
 	UDPTimeout             string   `json:"udp_timeout,omitempty"`
 	Address                []string `json:"address,omitempty"`
 	MTU                    int      `json:"mtu,omitempty"`
-	AutoRoute              string   `json:"auto_route,omitempty"`
+	AutoRoute              bool     `json:"auto_route,omitempty"`
 	Stack                  string   `json:"stack,omitempty"`
 	RouteExcludeAddressSet []string `json:"route_exclude_address_set,omitempty"`
 }
@@ -176,7 +176,7 @@ func (cfg *Config) nodesWithHttpGet(delegateParse DelegateParseNodesFunc) []stri
 	}
 
 	nodes := strings.Split(string(decoded), "\n")
-	
+
 	// 过滤空行
 	var validNodes []string
 	for _, node := range nodes {
@@ -382,23 +382,23 @@ func (cfg *Config) MacConfig(path string) error {
 		Type:                   "tun",
 		Address:                []string{"10.8.8.8/30"},
 		MTU:                    9000,
-		AutoRoute:              "true",
+		AutoRoute:              true,
 		Stack:                  "system",
 		RouteExcludeAddressSet: []string{"geosite-private", "geosite-ctm_cn", "geoip-cn"},
 	})
 
 	cfg.DNS.Servers = []DNSServer{
-		{
+		DNSServer{
 			Tag:             constant.DNS_LOCAL,
-			Server:          "114.114.114.114",
+			Address:         "114.114.114.114",
 			AddressStrategy: "ipv4_only",
 			Strategy:        "ipv4_only",
 			Detour:          "DirectConn",
 		},
-		{
-			Tag:    constant.DNS_PROXY,
-			Server: "https://8.8.8.8/dns-query",
-			Detour: "DNS",
+		DNSServer{
+			Tag:     constant.DNS_PROXY,
+			Address: "https://8.8.8.8/dns-query",
+			Detour:  "DNS",
 		},
 	}
 
@@ -413,6 +413,9 @@ func (cfg *Config) MacConfig(path string) error {
 	// 设置这些字段但不会输出到JSON（已通过json标签控制）
 	cfg.Route.DefaultMark = 0
 	cfg.Route.DefaultDomainResolver = nil
+
+	cfg.Experimental.CacheFile.Path = ""
+	cfg.Experimental.ClashAPI.ExternalController = "127.0.0.1:9095"
 
 	// 创建或打开文件
 	file, err := os.Create(path)
