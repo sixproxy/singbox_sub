@@ -16,7 +16,7 @@
   {
     "servers":
     [
-      {"tag": "dns_local","type": "udp", "server": "202.101.172.35"},
+      {"tag": "dns_local","type": "udp", "server": "114.114.114.114"},
       {"tag": "dns_proxy", "type": "https", "server": "8.8.8.8", "detour": "DNS"}
     ],
     "rules":
@@ -42,13 +42,13 @@
     { "tag": "OpenAI",      "type": "selector", "outbounds":   ["JP","NodeSelect","ChainProxy", "Select","AutoSelect"] , "default":"JP", "interrupt_exist_connections": true},
     { "tag": "Google",      "type": "selector", "outbounds":   ["US","NodeSelect","ChainProxy", "Select","AutoSelect"] ,"default":"NodeSelect","interrupt_exist_connections": true },
     { "tag": "Github",      "type": "selector", "outbounds":   ["SG","NodeSelect","ChainProxy", "Select","AutoSelect", "DirectConn"],"default":"NodeSelect", "interrupt_exist_connections": true},
-    { "tag": "Telegram",    "type": "selector", "outbounds": ["NodeSelect","ChainProxy", "Select",  "AutoSelect"], "default":"ChainProxy"},
-    { "tag": "Others",     "type": "selector", "outbounds":  ["NodeSelect","ChainProxy", "AutoSelect", "HK", "JP","DirectConn"], "default":"ChainProxy"},
+    { "tag": "Telegram",    "type": "selector", "outbounds": ["NodeSelect","ChainProxy", "Select",  "AutoSelect"], "default":"AutoSelect"},
+    { "tag": "Others",     "type": "selector", "outbounds":  ["NodeSelect","ChainProxy", "AutoSelect", "HK", "JP","DirectConn"], "default":"AutoSelect"},
     { "tag": "Microsoft",   "type": "selector", "outbounds": ["SG","NodeSelect", "ChainProxy",  "DirectConn"] },
     { "tag": "Apple",       "type": "selector", "outbounds": ["DirectConn","AutoSelect" ] },
     { "tag": "Paypal",      "type": "selector", "outbounds": ["ChainProxy", "Select", "AutoSelect","DirectConn"]},
-    { "tag": "Douyin",      "type": "selector", "outbounds": ["block","DirectConn"]  },
-    { "tag": "WeChatVideo", "type": "selector", "outbounds": ["block","DirectConn"]  },
+    { "tag": "Douyin",      "type": "selector", "outbounds": ["DirectConn","block"]  },
+    { "tag": "WeChatVideo", "type": "selector", "outbounds": ["DirectConn","block"]  },
     { "tag": "HoK",         "type": "selector", "outbounds": ["HK","JP","SG"] },
     { "tag": "AutoSelect",  "type": "urltest",  "outbounds": ["{all}"], "filter": [{ "action": "exclude", "keywords": ["网站|地址|剩余|过期|时间|有效|官网|流量|sec"] }], "url": "https://cp.cloudflare.com/generate_204", "interval": "8m", "tolerance": 150 },
     { "tag": "Select",      "type": "selector", "outbounds": ["{all}"], "filter": [{ "action": "exclude", "keywords": ["网站|地址|剩余|过期|时间|有效|官网|流量|sec"] }]},
