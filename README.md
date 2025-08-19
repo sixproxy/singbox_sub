@@ -9,8 +9,7 @@
 - 🌐 **智能 DNS**: 自动检测运营商 DNS
 - 🚀 **CDN 优化**: 城市级精确定位，自动设置 client_subnet
 - ⚙️ **配置系统**: YAML 配置覆盖，简化使用
-- 🌍 **跨平台**: 支持 Linux、macOS、Windows
-- 🏗️ **自动构建**: GitHub Actions 多平台编译
+- 🌍 **跨平台**: 支持 Linux、macOS、iOS
 
 ## 🚀 快速开始
 
