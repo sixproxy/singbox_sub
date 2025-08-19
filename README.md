@@ -26,10 +26,6 @@ subs:
   - url: "YOUR_SUBSCRIPTION_URL"
     insecure: false
 
-experimental:
-  clash_api:
-    external_controller: "127.0.0.1:9095"
-
 dns:
   auto_optimize: true  # 启用智能 CDN 优化
 ```
