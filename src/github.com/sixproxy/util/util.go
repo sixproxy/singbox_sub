@@ -481,8 +481,10 @@ func getRealLocation() (*LocationInfo, error) {
 
 	for _, service := range services {
 		location, err := queryLocationService(client, service)
-		location.City = getCityNameCH(location.City)
+
 		if err == nil && location != nil {
+			location.City = getCityNameCH(location.City)
+			logger.NetworkInfo("匹配到城市:%s, ISP:%s 省份:%s", location.City, location.ISP, location.Region)
 			return location, nil
 		}
 		logger.NetworkWarn("地理位置查询服务 %s 失败: %v", service, err)
