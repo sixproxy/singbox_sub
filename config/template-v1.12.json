@@ -128,7 +128,6 @@
       { "tag": "geosite-wx-shortvideo",   "type": "remote", "format": "binary", "url": "https://ghfast.top/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/wx_shortvideo.srs", "download_detour": "DirectConn" },
       { "tag": "geosite-douyin",          "type": "remote", "format": "binary", "url": "https://ghfast.top/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/douyin.srs", "download_detour": "DirectConn" },
       { "tag": "geosite-paypal",          "type": "remote", "format": "binary", "url": "https://ghfast.top/https://raw.github.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/paypal.srs", "download_detour": "DirectConn"},
-      { "tag": "geosite-netflix",         "type": "remote", "format": "binary", "url": "https://ghfast.top/https://raw.github.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/netflix.srs", "download_detour": "DirectConn"},
       { "tag": "geosite-hok",             "type": "remote", "format": "binary", "url": "https://ghfast.top/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/hok.srs", "download_detour": "DirectConn"}
     ]
   }
