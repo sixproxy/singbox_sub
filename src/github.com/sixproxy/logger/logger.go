@@ -46,6 +46,7 @@ type Logger struct {
 
 // 全局日志实例
 var globalLogger *Logger
+var colorEnabled = true // 默认启用颜色
 
 func init() {
 	// 默认初始化为INFO级别，输出到标准输出
@@ -53,6 +54,21 @@ func init() {
 		level:  INFO,
 		logger: log.New(os.Stdout, "", 0), // 不使用默认前缀，我们自定义格式
 	}
+	
+	// 检查环境变量，某些CI环境可能不支持颜色
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
+		colorEnabled = false
+	}
+}
+
+// SetColorEnabled 设置是否启用颜色输出
+func SetColorEnabled(enabled bool) {
+	colorEnabled = enabled
+}
+
+// IsColorEnabled 检查是否启用了颜色
+func IsColorEnabled() bool {
+	return colorEnabled
 }
 
 // SetLevel 设置日志级别
@@ -68,6 +84,36 @@ func GetLevel() LogLevel {
 // SetOutput 设置日志输出目标
 func SetOutput(output *os.File) {
 	globalLogger.logger.SetOutput(output)
+}
+
+// getLevelColor 获取日志级别对应的颜色
+func getLevelColor(level LogLevel) (string, string) {
+	if !colorEnabled {
+		return "", ""
+	}
+	
+	switch level {
+	case DEBUG:
+		return ColorDim + ColorCyan, ColorReset  // 暗青色 - 调试信息不太重要
+	case INFO:
+		return ColorBlue, ColorReset              // 蓝色 - 普通信息
+	case WARN:
+		return ColorBold + ColorYellow, ColorReset // 粗体黄色 - 警告
+	case ERROR:
+		return ColorBold + ColorRed, ColorReset    // 粗体红色 - 错误
+	case FATAL:
+		return ColorBold + ColorBrightRed, ColorReset // 粗体亮红色 - 致命错误
+	default:
+		return "", ""
+	}
+}
+
+// applyColor 应用颜色到文本（如果启用颜色）
+func applyColor(color, text, reset string) string {
+	if !colorEnabled {
+		return text
+	}
+	return color + text + reset
 }
 
 // formatMessage 格式化日志消息
@@ -86,11 +132,17 @@ func (l *Logger) formatMessage(level LogLevel, format string, args ...interface{
 	
 	message := fmt.Sprintf(format, args...)
 	
-	// 格式: [时间] [级别] [调用位置] 消息
+	// 应用颜色
+	coloredTimestamp := applyColor(ColorDim, timestamp, ColorReset)
+	levelColor, resetColor := getLevelColor(level)
+	coloredLevel := levelColor + level.String() + resetColor
+	coloredCaller := applyColor(ColorDim, caller, ColorReset)
+	
+	// 格式: [时间] [彩色级别] [调用位置] 消息
 	return fmt.Sprintf("[%s] [%s] [%s] %s", 
-		timestamp, 
-		level.String(), 
-		caller, 
+		coloredTimestamp,
+		coloredLevel,
+		coloredCaller,
 		message)
 }
 
@@ -180,54 +232,81 @@ func Fatalln(args ...interface{}) {
 
 // 配置相关的便利方法
 func ConfigInfo(format string, args ...interface{}) {
-	Info("[CONFIG] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorGreen, "[CONFIG]", ColorReset)
+	Info("%s %s", tag, message)
 }
 
 func ConfigWarn(format string, args ...interface{}) {
-	Warn("[CONFIG] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorYellow, "[CONFIG]", ColorReset)
+	Warn("%s %s", tag, message)
 }
 
 func ConfigError(format string, args ...interface{}) {
-	Error("[CONFIG] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorRed, "[CONFIG]", ColorReset)
+	Error("%s %s", tag, message)
 }
 
 // 网络相关的便利方法
 func NetworkInfo(format string, args ...interface{}) {
-	Info("[NETWORK] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorCyan, "[NETWORK]", ColorReset)
+	Info("%s %s", tag, message)
 }
 
 func NetworkWarn(format string, args ...interface{}) {
-	Warn("[NETWORK] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorYellow, "[NETWORK]", ColorReset)
+	Warn("%s %s", tag, message)
 }
 
 func NetworkError(format string, args ...interface{}) {
-	Error("[NETWORK] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorRed, "[NETWORK]", ColorReset)
+	Error("%s %s", tag, message)
 }
 
 // 解析相关的便利方法
 func ParseInfo(format string, args ...interface{}) {
-	Info("[PARSE] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorPurple, "[PARSE]", ColorReset)
+	Info("%s %s", tag, message)
 }
 
 func ParseWarn(format string, args ...interface{}) {
-	Warn("[PARSE] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorYellow, "[PARSE]", ColorReset)
+	Warn("%s %s", tag, message)
 }
 
 func ParseError(format string, args ...interface{}) {
-	Error("[PARSE] "+format, args...)
+	message := fmt.Sprintf(format, args...)
+	tag := applyColor(ColorBold+ColorRed, "[PARSE]", ColorReset)
+	Error("%s %s", tag, message)
 }
 
 // ANSI 颜色代码
 const (
-	ColorReset  = "\033[0m"
-	ColorRed    = "\033[31m"
-	ColorGreen  = "\033[32m"
-	ColorYellow = "\033[33m"
-	ColorBlue   = "\033[34m"
-	ColorPurple = "\033[35m"
-	ColorCyan   = "\033[36m"
-	ColorWhite  = "\033[37m"
-	ColorBold   = "\033[1m"
+	ColorReset    = "\033[0m"
+	ColorRed      = "\033[31m"
+	ColorGreen    = "\033[32m"
+	ColorYellow   = "\033[33m"
+	ColorBlue     = "\033[34m"
+	ColorPurple   = "\033[35m"
+	ColorCyan     = "\033[36m"
+	ColorWhite    = "\033[37m"
+	ColorBold     = "\033[1m"
+	ColorDim      = "\033[2m"
+	
+	// 亮色版本
+	ColorBrightRed     = "\033[91m"
+	ColorBrightGreen   = "\033[92m"
+	ColorBrightYellow  = "\033[93m"
+	ColorBrightBlue    = "\033[94m"
+	ColorBrightPurple  = "\033[95m"
+	ColorBrightCyan    = "\033[96m"
 )
 
 // Success 打印绿色高亮的成功信息
