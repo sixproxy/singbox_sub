@@ -1,9 +1,10 @@
 # SingBox 订阅配置生成器
-
-支持多协议的 Sing-box 订阅配置生成工具，具备智能 DNS 检测和 CDN 优化功能。
+- 支持多协议的 Sing-box 订阅配置生成工具，具备智能 DNS 检测和 CDN 优化功能。
+- 本项目使用只支持当前sing-box的最新的两个稳定版本。
+  - 其中Linux支持最新版本部署和最新版本配置
+  - Mac和iOS都使用上一个稳定版本和上一个稳定版本配置。
 
 ## ✨ 特性
-
 - 🔧 **多协议支持**: Shadowsocks、Hysteria2、Trojan、AnyTLS
 - 🌐 **智能 DNS**: 自动检测运营商 DNS
 - 🚀 **CDN 优化**: 城市级精确定位，自动设置 client_subnet
