@@ -383,64 +383,6 @@ type LocationInfo struct {
 	ISP     string `json:"isp"`    // 运营商
 }
 
-// CityISPInfo 城市运营商网段信息
-type CityISPInfo struct {
-	City         string   // 城市名称
-	ISP          string   // 运营商名称
-	ClientSubnet []string // 该城市该运营商的网段列表
-}
-
-// 中国主要城市的运营商网段数据库
-var cityISPDatabase = map[string]map[string][]string{
-	"北京": {
-		"电信":  {"202.101.172.0/24", "202.101.170.0/24", "218.85.152.0/24", "124.205.155.0/24"},
-		"联通":  {"202.106.0.0/24", "202.106.196.0/24", "123.125.81.0/24", "140.207.198.0/24"},
-		"移动":  {"221.5.88.0/24", "221.5.203.0/24", "211.136.112.0/24", "120.196.165.0/24"},
-		"教育网": {"202.112.0.0/24", "166.111.8.0/24", "59.66.0.0/24"},
-	},
-	"上海": {
-		"电信":  {"202.96.209.0/24", "202.96.199.0/24", "116.228.111.0/24", "180.169.81.0/24"},
-		"联通":  {"140.207.54.0/24", "140.207.198.0/24", "101.71.154.0/24", "210.22.70.0/24"},
-		"移动":  {"117.131.0.0/24", "183.194.238.0/24", "223.87.238.0/24", "120.204.0.0/24"},
-		"教育网": {"202.120.2.0/24", "202.38.64.0/24", "210.25.0.0/24"},
-	},
-	"广州": {
-		"电信":  {"183.232.231.0/24", "183.232.169.0/24", "113.108.239.0/24", "14.29.0.0/24"},
-		"联通":  {"113.107.219.0/24", "210.21.196.0/24", "221.4.70.0/24", "113.200.91.0/24"},
-		"移动":  {"120.196.165.0/24", "221.179.155.0/24", "183.232.126.0/24", "223.104.248.0/24"},
-		"教育网": {"202.38.140.0/24", "210.38.137.0/24", "202.116.160.0/24"},
-	},
-	"深圳": {
-		"电信":  {"183.240.200.0/24", "183.240.48.0/24", "119.147.15.0/24", "14.215.177.0/24"},
-		"联通":  {"113.200.91.0/24", "210.21.70.0/24", "221.4.81.0/24", "140.75.166.0/24"},
-		"移动":  {"120.196.212.0/24", "223.104.248.0/24", "183.240.102.0/24", "120.204.29.0/24"},
-		"教育网": {"202.38.193.0/24", "210.38.137.0/24", "166.111.4.0/24"},
-	},
-	"杭州": {
-		"电信":  {"115.236.101.0/24", "60.191.124.0/24", "124.160.194.0/24", "122.224.0.0/24"},
-		"联通":  {"101.71.37.0/24", "140.207.160.0/24", "210.22.84.0/24", "153.35.0.0/24"},
-		"移动":  {"120.199.40.0/24", "183.129.244.0/24", "223.104.130.0/24", "117.136.0.0/24"},
-		"教育网": {"210.32.0.0/24", "202.38.64.0/24", "210.25.5.0/24"},
-	},
-	"南京": {
-		"电信":  {"180.101.49.0/24", "180.101.136.0/24", "114.222.0.0/24", "58.240.0.0/24"},
-		"联通":  {"114.221.0.0/24", "221.6.0.0/24", "123.58.180.0/24", "210.22.80.0/24"},
-		"移动":  {"112.17.0.0/24", "117.136.0.0/24", "223.111.0.0/24", "120.204.96.0/24"},
-		"教育网": {"210.28.0.0/24", "202.119.0.0/24", "58.192.114.0/24"},
-	},
-	"福州": {
-		"电信":  {"27.155.96.0/24", "27.155.97.0/24", "180.101.212.0/24", "114.84.224.0/24"},
-		"联通":  {"221.131.128.0/24", "61.154.0.0/24", "210.15.128.0/24", "202.101.224.0/24"},
-		"移动":  {"120.39.0.0/24", "117.28.0.0/24", "223.104.56.0/24", "183.207.224.0/24"},
-		"教育网": {"202.38.193.0/24", "202.201.112.0/24", "210.34.0.0/24"},
-	},
-	"泉州": {
-		"电信":  {"27.155.64.0/24", "27.155.65.0/24", "114.84.160.0/24", "180.101.208.0/24"},
-		"联通":  {"221.131.160.0/24", "61.154.32.0/24", "210.15.160.0/24", "202.101.240.0/24"},
-		"移动":  {"120.39.32.0/24", "117.28.32.0/24", "223.104.88.0/24", "183.207.240.0/24"},
-		"教育网": {"202.38.224.0/24", "210.34.32.0/24", "202.201.176.0/24"},
-	},
-}
 
 // GetOptimalClientSubnet 获取优化的client_subnet值
 func GetOptimalClientSubnet() string {
@@ -448,24 +390,24 @@ func GetOptimalClientSubnet() string {
 	location, err := getRealLocation()
 	if err != nil {
 		logger.NetworkWarn("获取地理位置失败: %v，使用默认策略", err)
-		return getDefaultClientSubnet()
+		return GetDefaultClientSubnet()
 	}
 
 	// 2. 根据城市和运营商获取精确的网段
-	if subnet := getCityISPSubnet(location.City, location.ISP); subnet != "" {
+	if subnet := GetCityISPSubnet(location.City, location.ISP); subnet != "" {
 		logger.NetworkInfo("检测到位置: %s %s，使用client_subnet: %s", location.City, location.ISP, subnet)
 		return subnet
 	}
 
 	// 3. 如果精确匹配失败，尝试模糊匹配
-	if subnet := getFallbackSubnet(location); subnet != "" {
+	if subnet := GetFallbackSubnet(location); subnet != "" {
 		logger.NetworkInfo("使用备选匹配: %s，client_subnet: %s", location.City, subnet)
 		return subnet
 	}
 
 	// 4. 默认策略
 	logger.NetworkInfo("无法精确匹配，使用默认client_subnet")
-	return getDefaultClientSubnet()
+	return GetDefaultClientSubnet()
 }
 
 // getRealLocation 获取真实的公网IP地理位置
@@ -490,14 +432,14 @@ func getRealLocation() (*LocationInfo, error) {
 				logger.NetworkWarn("API返回的城市字段为空，尝试从省份推导")
 				// 尝试从省份/地区推导城市
 				if location.Region != "" {
-					originalCity = inferCityFromRegion(location.Region)
+					originalCity = InferCityFromRegion(location.Region)
 					location.City = originalCity
 					logger.NetworkInfo("从省份 '%s' 推导城市: %s", location.Region, originalCity)
 				}
 			}
 			
 			// 进行城市名映射
-			mappedCity := getCityNameCH(originalCity)
+			mappedCity := GetCityNameCH(originalCity)
 			
 			// 详细的调试信息
 			logger.NetworkInfo("地理位置查询成功 - 服务: %s", service)
@@ -516,7 +458,7 @@ func getRealLocation() (*LocationInfo, error) {
 			} else {
 				// 城市字段完全为空，使用ISP推导
 				logger.NetworkWarn("城市信息完全缺失，尝试从ISP推导默认城市")
-				location.City = getDefaultCityByISP(location.ISP)
+				location.City = GetDefaultCityByISP(location.ISP)
 			}
 			
 			logger.NetworkInfo("最终结果 - 城市:'%s', ISP:'%s', 省份:'%s'", location.City, location.ISP, location.Region)
@@ -614,94 +556,11 @@ func parseIPAPIResponse(body []byte) (*LocationInfo, error) {
 		Country: response.Country,
 		Region:  response.RegionName,
 		City:    response.City,
-		ISP:     normalizeISPName(response.ISP),
+		ISP:     NormalizeISPName(response.ISP),
 	}, nil
 }
 
 // parseIPAPICoResponse 解析ipapi.co的响应
-func getCityNameCH(enName string) string {
-	// 中国大陆城市
-	switch enName {
-	case "Beijing":
-		return "北京"
-	case "Shanghai":
-		return "上海"
-	case "Hangzhou":
-		return "杭州"
-	case "Shenzhen":
-		return "深圳"
-	case "Guangzhou":
-		return "广州"
-	case "Quanzhou":
-		return "泉州"
-	case "Fuzhou":
-		return "福州"
-	case "Nanjing":
-		return "南京"
-	case "Chengdu":
-		return "成都"
-	case "Wuhan":
-		return "武汉"
-	case "Xi'an", "Xian":
-		return "西安"
-	case "Chongqing":
-		return "重庆"
-	case "Tianjin":
-		return "天津"
-	case "Shenyang":
-		return "沈阳"
-	case "Changchun":
-		return "长春"
-	case "Harbin":
-		return "哈尔滨"
-	case "Jinan":
-		return "济南"
-	case "Qingdao":
-		return "青岛"
-	case "Zhengzhou":
-		return "郑州"
-	case "Taiyuan":
-		return "太原"
-	case "Shijiazhuang":
-		return "石家庄"
-	case "Hohhot":
-		return "呼和浩特"
-	case "Yinchuan":
-		return "银川"
-	case "Xining":
-		return "西宁"
-	case "Urumqi":
-		return "乌鲁木齐"
-	case "Lhasa":
-		return "拉萨"
-	case "Kunming":
-		return "昆明"
-	case "Guiyang":
-		return "贵阳"
-	case "Nanning":
-		return "南宁"
-	case "Haikou":
-		return "海口"
-	case "Changsha":
-		return "长沙"
-	case "Nanchang":
-		return "南昌"
-	case "Hefei":
-		return "合肥"
-	// 港澳台城市 - 使用大陆相近的网段
-	case "Hong Kong":
-		return "深圳" // 香港使用深圳网段
-	case "Macau", "Macao":
-		return "广州" // 澳门使用广州网段  
-	case "Taipei":
-		return "福州" // 台北使用福建网段
-	case "Kaohsiung":
-		return "泉州" // 高雄使用泉州网段
-	default:
-		// 返回原始名称，后续会进入fallback逻辑
-		return enName
-	}
-}
 
 func parseIPAPICoResponse(body []byte) (*LocationInfo, error) {
 	var response struct {
@@ -720,8 +579,8 @@ func parseIPAPICoResponse(body []byte) (*LocationInfo, error) {
 		IP:      response.IP,
 		Country: response.Country,
 		Region:  response.Region,
-		City:    getCityNameCH(response.City),
-		ISP:     normalizeISPName(response.Org),
+		City:    GetCityNameCH(response.City),
+		ISP:     NormalizeISPName(response.Org),
 	}, nil
 }
 
@@ -750,84 +609,12 @@ func parseIPSBResponse(body []byte) (*LocationInfo, error) {
 		Country: response.Country,
 		Region:  response.Region,
 		City:    response.City,
-		ISP:     normalizeISPName(isp),
+		ISP:     NormalizeISPName(isp),
 	}, nil
 }
 
-// normalizeISPName 标准化运营商名称
-func normalizeISPName(isp string) string {
-	isp = strings.ToLower(isp)
 
-	if strings.Contains(isp, "china telecom") || strings.Contains(isp, "电信") || strings.Contains(isp, "chinanet") {
-		return "电信"
-	}
-	if strings.Contains(isp, "china unicom") || strings.Contains(isp, "联通") || strings.Contains(isp, "unicom") {
-		return "联通"
-	}
-	if strings.Contains(isp, "china mobile") || strings.Contains(isp, "移动") || strings.Contains(isp, "cmcc") {
-		return "移动"
-	}
-	if strings.Contains(isp, "cernet") || strings.Contains(isp, "教育") || strings.Contains(isp, "edu") {
-		return "教育网"
-	}
 
-	return "电信" // 默认返回电信
-}
-
-// getCityISPSubnet 根据城市和运营商获取网段
-func getCityISPSubnet(city, isp string) string {
-	if cityData, exists := cityISPDatabase[city]; exists {
-		if subnets, exists := cityData[isp]; exists && len(subnets) > 0 {
-			// 返回第一个网段作为client_subnet
-			return subnets[0]
-		}
-	}
-	return ""
-}
-
-// getFallbackSubnet 获取备选网段
-func getFallbackSubnet(location *LocationInfo) string {
-	// 1. 尝试匹配其他城市的相同运营商
-	for _, cityData := range cityISPDatabase {
-		if subnets, exists := cityData[location.ISP]; exists && len(subnets) > 0 {
-			logger.NetworkInfo("使用 %s 网段作为备选", location.ISP)
-			return subnets[0]
-		}
-	}
-
-	// 2. 如果连运营商都匹配不上，根据地区选择默认运营商
-	return getRegionalDefault(location.Region)
-}
-
-// getRegionalDefault 根据地区获取默认网段
-func getRegionalDefault(region string) string {
-	// 根据不同省份选择主要运营商的网段
-	switch {
-	case strings.Contains(region, "北京") || strings.Contains(region, "天津"):
-		return "202.101.170.0/24" // 电信北京
-	case strings.Contains(region, "上海"):
-		return "202.96.209.0/24" // 电信上海
-	case strings.Contains(region, "广东"):
-		return "183.232.231.0/24" // 电信广州
-	case strings.Contains(region, "浙江"):
-		return "115.236.101.0/24" // 电信杭州
-	case strings.Contains(region, "江苏"):
-		return "180.101.49.0/24" // 电信南京
-	case strings.Contains(region, "福建"):
-		return "27.155.96.0/24" // 电信福州
-	default:
-		return "202.101.170.0/24" // 默认电信北京
-	}
-}
-
-// getDefaultClientSubnet 获取默认的client_subnet
-func getDefaultClientSubnet() string {
-	// 使用本地IP推测或者返回通用网段
-	if subnet := guessClientSubnetFromLocalIP(); subnet != "" {
-		return subnet
-	}
-	return "202.101.170.0/24" // 电信北京作为最终备选
-}
 
 // GetISPName 获取当前运营商名称 (更新为使用新的地理位置API)
 func GetISPName() string {
@@ -861,70 +648,6 @@ func GetISPName() string {
 	return "本地网络"
 }
 
-// guessClientSubnetFromLocalIP 根据本地IP推测合适的client_subnet
-func guessClientSubnetFromLocalIP() string {
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return ""
-	}
-
-	for _, iface := range interfaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		addrs, err := iface.Addrs()
-		if err != nil {
-			continue
-		}
-
-		for _, addr := range addrs {
-			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-				localIP := ipnet.IP.To4()
-
-				// 根据本地IP的ISP特征推测合适的client_subnet
-				subnet := guessSubnetByIPPattern(localIP)
-				if subnet != "" {
-					return subnet
-				}
-			}
-		}
-	}
-
-	return ""
-}
-
-// guessSubnetByIPPattern 根据IP模式推测运营商网段
-func guessSubnetByIPPattern(ip net.IP) string {
-	if ip == nil {
-		return ""
-	}
-
-	// 私有IP范围，无法直接确定运营商
-	// 但可以根据一些经验规则推测
-	switch {
-	case ip[0] == 192 && ip[1] == 168:
-		// 家庭网络，根据常见路由器配置推测
-		switch ip[2] {
-		case 1, 0:
-			// 最常见的家用路由器配置，通常是电信
-			return "202.101.170.0/24"
-		case 31:
-			// 一些品牌路由器的默认配置
-			return "202.106.0.0/24" // 联通
-		default:
-			return "202.101.170.0/24" // 默认电信
-		}
-	case ip[0] == 10:
-		// 企业网络，通常使用教育网或企业专线
-		return "202.112.0.0/24"
-	case ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31:
-		// 私有网络
-		return "202.106.0.0/24" // 联通
-	}
-
-	return ""
-}
 
 // isPrivateIP 检查是否为私有IP地址
 func isPrivateIP(ip string) bool {
@@ -953,58 +676,6 @@ func isPrivateIP(ip string) bool {
 	return false
 }
 
-// inferCityFromRegion 从省份推导主要城市
-func inferCityFromRegion(region string) string {
-	region = strings.ToLower(region)
-	
-	// 匹配省份到主要城市
-	if strings.Contains(region, "beijing") || strings.Contains(region, "北京") {
-		return "Beijing"
-	}
-	if strings.Contains(region, "shanghai") || strings.Contains(region, "上海") {
-		return "Shanghai"
-	}
-	if strings.Contains(region, "guangdong") || strings.Contains(region, "广东") {
-		return "Guangzhou"
-	}
-	if strings.Contains(region, "zhejiang") || strings.Contains(region, "浙江") {
-		return "Hangzhou"
-	}
-	if strings.Contains(region, "jiangsu") || strings.Contains(region, "江苏") {
-		return "Nanjing"
-	}
-	if strings.Contains(region, "fujian") || strings.Contains(region, "福建") {
-		return "Fuzhou"
-	}
-	if strings.Contains(region, "taiwan") || strings.Contains(region, "台湾") {
-		return "Taipei"
-	}
-	if strings.Contains(region, "hong kong") || strings.Contains(region, "香港") {
-		return "Hong Kong"
-	}
-	if strings.Contains(region, "macau") || strings.Contains(region, "macao") || strings.Contains(region, "澳门") {
-		return "Macau"
-	}
-	
-	return "" // 无法推导
-}
-
-// getDefaultCityByISP 根据ISP推导默认城市
-func getDefaultCityByISP(isp string) string {
-	// 根据运营商特点选择合适的默认城市
-	switch isp {
-	case "电信":
-		return "北京" // 电信总部在北京
-	case "联通":
-		return "北京" // 联通总部在北京
-	case "移动":
-		return "北京" // 移动总部在北京
-	case "教育网":
-		return "北京" // CERNET总部在清华大学
-	default:
-		return "北京" // 默认使用北京
-	}
-}
 
 // GetInternalIP 获取本机的内网IP地址
 func GetInternalIP() string {
