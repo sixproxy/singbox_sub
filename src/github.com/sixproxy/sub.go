@@ -47,6 +47,9 @@ func main() {
 		logger.Fatal("加载配置文件失败: %v", err)
 	}
 
+	// 1.5.打印控制面板地址
+	printControlPanelURL(cfg)
+
 	// 2.渲染模版
 	err = cfg.RenderTemplate(delegateParse)
 	if err != nil {
@@ -347,4 +350,12 @@ func copyFile(src, dst string) error {
 	}
 	
 	return nil
+}
+
+// printControlPanelURL 打印控制面板地址
+func printControlPanelURL(cfg *model.Config) {
+	if cfg.Experimental.ClashAPI.ExternalController != "" {
+		controlURL := fmt.Sprintf("http://%s/ui/#/proxies", cfg.Experimental.ClashAPI.ExternalController)
+		logger.Success("控制面板地址：%s", controlURL)
+	}
 }

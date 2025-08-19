@@ -216,3 +216,32 @@ func ParseWarn(format string, args ...interface{}) {
 func ParseError(format string, args ...interface{}) {
 	Error("[PARSE] "+format, args...)
 }
+
+// ANSI 颜色代码
+const (
+	ColorReset  = "\033[0m"
+	ColorRed    = "\033[31m"
+	ColorGreen  = "\033[32m"
+	ColorYellow = "\033[33m"
+	ColorBlue   = "\033[34m"
+	ColorPurple = "\033[35m"
+	ColorCyan   = "\033[36m"
+	ColorWhite  = "\033[37m"
+	ColorBold   = "\033[1m"
+)
+
+// Success 打印绿色高亮的成功信息
+func Success(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	
+	// 使用绿色高亮和加粗显示
+	coloredMessage := fmt.Sprintf("[%s] %s%s%s%s", 
+		timestamp,
+		ColorBold,
+		ColorGreen,
+		message,
+		ColorReset)
+	
+	globalLogger.logger.Println(coloredMessage)
+}

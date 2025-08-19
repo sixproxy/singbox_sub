@@ -74,12 +74,20 @@ func mergeYAMLConfig(template *Config, userConfig *UserConfig) {
 		template.Subs = userConfig.Subs
 	}
 
-	// 2. 覆盖实验性功能配置
-	if userConfig.Experimental != nil && userConfig.Experimental.ClashAPI.ExternalController != "" {
-		template.Experimental.ClashAPI.ExternalController = userConfig.Experimental.ClashAPI.ExternalController
+	// 2. 自动设置experimental功能配置 - 使用内网IP:9095
+	if template.Experimental.ClashAPI.ExternalController == "" {
+		internalIP := util.GetInternalIP()
+		template.Experimental.ClashAPI.ExternalController = fmt.Sprintf("%s:9095", internalIP)
+		logger.ConfigInfo("自动设置 external_controller: %s", template.Experimental.ClashAPI.ExternalController)
 	}
 
-	// 3. 覆盖DNS配置 (通过重新构造)
+	// 3. 如果用户在YAML中手动配置了experimental，优先使用用户配置
+	if userConfig.Experimental != nil && userConfig.Experimental.ClashAPI.ExternalController != "" {
+		template.Experimental.ClashAPI.ExternalController = userConfig.Experimental.ClashAPI.ExternalController
+		logger.ConfigInfo("使用用户配置的 external_controller: %s", template.Experimental.ClashAPI.ExternalController)
+	}
+
+	// 4. 覆盖DNS配置 (通过重新构造)
 	if userConfig.DNS != nil {
 
 		// 配置自动优化，就使用自动优化设置

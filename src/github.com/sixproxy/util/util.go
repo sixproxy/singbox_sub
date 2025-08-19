@@ -819,3 +819,50 @@ func isPrivateIP(ip string) bool {
 
 	return false
 }
+
+// GetInternalIP 获取本机的内网IP地址
+func GetInternalIP() string {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		logger.NetworkWarn("获取网络接口失败: %v", err)
+		return "127.0.0.1"
+	}
+
+	for _, iface := range interfaces {
+		// 跳过禁用的接口和回环接口
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					ip := ipnet.IP.String()
+					// 优先返回私有IP地址
+					if isPrivateIP(ip) {
+						logger.NetworkInfo("检测到内网IP: %s (接口: %s)", ip, iface.Name)
+						return ip
+					}
+				}
+			}
+		}
+	}
+
+	// 如果没有找到私有IP，尝试连接外部服务来获取本地IP
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		logger.NetworkWarn("无法检测内网IP，使用默认地址: %v", err)
+		return "127.0.0.1"
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	ip := localAddr.IP.String()
+	logger.NetworkInfo("通过连接测试检测到内网IP: %s", ip)
+	return ip
+}
