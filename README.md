@@ -59,8 +59,16 @@ chmod +x sub
 
 
 
-Linux系统生成的配置文件: `linux_config.json`
-Mac系统生成的配置文件: `mac_config.json`
+Linux系统生成的配置文件:   `linux_config.json`
+
+iOS、Mac系统生成的配置文件: `mac_config.json`
+
+**Tips:**
+
+    因为sing-box的iOS客户端经常延期上线,为了使用sing-box方便,
+    Mac端和iOS端的配置文件都使用比较旧的一个版本。
+    这样既可以稳定使用,由减少折腾。
+
 
 
 ## 📋 CDN 优化
