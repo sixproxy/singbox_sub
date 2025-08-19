@@ -60,11 +60,14 @@ type CacheFile struct {
 
 // --- dns -------------------------------------------------
 type DNSConfig struct {
-	Servers      []DNSServer `json:"servers"`
-	Rules        []DNSRule   `json:"rules"`
-	Final        string      `json:"final"`
-	Strategy     string      `json:"strategy"`
-	ClientSubnet string      `json:"client_subnet"`
+	Servers          []DNSServer `json:"servers"`
+	Rules            []DNSRule   `json:"rules"`
+	Final            string      `json:"final"`
+	Strategy         string      `json:"strategy"`
+	ClientSubnet     string      `json:"client_subnet"`
+	DisableCache     bool        `json:"disable_cache"`
+	DisableExpire    bool        `json:"disable_expire"`
+	IndependentCache bool        `json:"independent_cache"`
 }
 
 type DNSServer struct {
