@@ -1,4 +1,6 @@
 #
+linux_config.json
+mac_config.json
 singbox_config.json
 sbv1.12.json
 # Binaries for programs and plugins
