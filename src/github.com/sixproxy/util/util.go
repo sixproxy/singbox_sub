@@ -483,8 +483,54 @@ func getRealLocation() (*LocationInfo, error) {
 		location, err := queryLocationService(client, service)
 
 		if err == nil && location != nil {
-			location.City = getCityNameCH(location.City)
-			logger.NetworkInfo("匹配到城市:%s, ISP:%s 省份:%s", location.City, location.ISP, location.Region)
+			originalCity := location.City
+			
+			// 先处理空字段的情况
+			if originalCity == "" {
+				logger.NetworkWarn("API返回的城市字段为空，尝试从省份推导")
+				// 尝试从省份/地区推导城市
+				if location.Region != "" {
+					originalCity = inferCityFromRegion(location.Region)
+					location.City = originalCity
+					logger.NetworkInfo("从省份 '%s' 推导城市: %s", location.Region, originalCity)
+				}
+			}
+			
+			// 进行城市名映射
+			mappedCity := getCityNameCH(originalCity)
+			
+			// 详细的调试信息
+			logger.NetworkInfo("地理位置查询成功 - 服务: %s", service)
+			logger.NetworkInfo("原始数据 - 城市:'%s', 省份:'%s', ISP:'%s', IP:'%s'", originalCity, location.Region, location.ISP, location.IP)
+			logger.NetworkInfo("城市映射: '%s' -> '%s'", originalCity, mappedCity)
+			
+			// 验证映射结果
+			if mappedCity != "" && mappedCity != originalCity {
+				// 映射成功
+				location.City = mappedCity
+				logger.NetworkInfo("城市映射成功，使用: %s", mappedCity)
+			} else if originalCity != "" {
+				// 映射失败但原始城市不为空，保留原始名称
+				location.City = originalCity
+				logger.NetworkWarn("未找到城市映射，保留原始名称: %s", originalCity)
+			} else {
+				// 城市字段完全为空，使用ISP推导
+				logger.NetworkWarn("城市信息完全缺失，尝试从ISP推导默认城市")
+				location.City = getDefaultCityByISP(location.ISP)
+			}
+			
+			logger.NetworkInfo("最终结果 - 城市:'%s', ISP:'%s', 省份:'%s'", location.City, location.ISP, location.Region)
+			
+			// 确保关键字段不为空
+			if location.City == "" {
+				logger.NetworkWarn("城市字段仍为空，使用默认值")
+				location.City = "北京" // 使用默认城市
+			}
+			if location.ISP == "" {
+				logger.NetworkWarn("ISP字段为空，使用默认值")
+				location.ISP = "电信" // 使用默认ISP
+			}
+			
 			return location, nil
 		}
 		logger.NetworkWarn("地理位置查询服务 %s 失败: %v", service, err)
@@ -497,13 +543,39 @@ func getRealLocation() (*LocationInfo, error) {
 func queryLocationService(client *http.Client, serviceURL string) (*LocationInfo, error) {
 	resp, err := client.Get(serviceURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("HTTP请求失败: %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("读取响应失败: %v", err)
+	}
+
+	// 检查响应是否为空
+	if len(body) == 0 {
+		return nil, fmt.Errorf("响应为空")
+	}
+
+	// 检查是否有错误响应 (如rate limit)
+	var errorCheck map[string]interface{}
+	if err := json.Unmarshal(body, &errorCheck); err == nil {
+		if errorVal, exists := errorCheck["error"]; exists {
+			if errorBool, ok := errorVal.(bool); ok && errorBool {
+				reason := "未知错误"
+				if reasonVal, exists := errorCheck["reason"]; exists {
+					reason = fmt.Sprintf("%v", reasonVal)
+				}
+				return nil, fmt.Errorf("服务返回错误: %s", reason)
+			}
+		}
+		
+		// 检查ip-api.com的状态字段
+		if statusVal, exists := errorCheck["status"]; exists {
+			if status, ok := statusVal.(string); ok && status != "success" {
+				return nil, fmt.Errorf("API状态异常: %s", status)
+			}
+		}
 	}
 
 	// 解析不同服务的响应格式
@@ -548,6 +620,7 @@ func parseIPAPIResponse(body []byte) (*LocationInfo, error) {
 
 // parseIPAPICoResponse 解析ipapi.co的响应
 func getCityNameCH(enName string) string {
+	// 中国大陆城市
 	switch enName {
 	case "Beijing":
 		return "北京"
@@ -565,7 +638,67 @@ func getCityNameCH(enName string) string {
 		return "福州"
 	case "Nanjing":
 		return "南京"
+	case "Chengdu":
+		return "成都"
+	case "Wuhan":
+		return "武汉"
+	case "Xi'an", "Xian":
+		return "西安"
+	case "Chongqing":
+		return "重庆"
+	case "Tianjin":
+		return "天津"
+	case "Shenyang":
+		return "沈阳"
+	case "Changchun":
+		return "长春"
+	case "Harbin":
+		return "哈尔滨"
+	case "Jinan":
+		return "济南"
+	case "Qingdao":
+		return "青岛"
+	case "Zhengzhou":
+		return "郑州"
+	case "Taiyuan":
+		return "太原"
+	case "Shijiazhuang":
+		return "石家庄"
+	case "Hohhot":
+		return "呼和浩特"
+	case "Yinchuan":
+		return "银川"
+	case "Xining":
+		return "西宁"
+	case "Urumqi":
+		return "乌鲁木齐"
+	case "Lhasa":
+		return "拉萨"
+	case "Kunming":
+		return "昆明"
+	case "Guiyang":
+		return "贵阳"
+	case "Nanning":
+		return "南宁"
+	case "Haikou":
+		return "海口"
+	case "Changsha":
+		return "长沙"
+	case "Nanchang":
+		return "南昌"
+	case "Hefei":
+		return "合肥"
+	// 港澳台城市 - 使用大陆相近的网段
+	case "Hong Kong":
+		return "深圳" // 香港使用深圳网段
+	case "Macau", "Macao":
+		return "广州" // 澳门使用广州网段  
+	case "Taipei":
+		return "福州" // 台北使用福建网段
+	case "Kaohsiung":
+		return "泉州" // 高雄使用泉州网段
 	default:
+		// 返回原始名称，后续会进入fallback逻辑
 		return enName
 	}
 }
@@ -818,6 +951,59 @@ func isPrivateIP(ip string) bool {
 	}
 
 	return false
+}
+
+// inferCityFromRegion 从省份推导主要城市
+func inferCityFromRegion(region string) string {
+	region = strings.ToLower(region)
+	
+	// 匹配省份到主要城市
+	if strings.Contains(region, "beijing") || strings.Contains(region, "北京") {
+		return "Beijing"
+	}
+	if strings.Contains(region, "shanghai") || strings.Contains(region, "上海") {
+		return "Shanghai"
+	}
+	if strings.Contains(region, "guangdong") || strings.Contains(region, "广东") {
+		return "Guangzhou"
+	}
+	if strings.Contains(region, "zhejiang") || strings.Contains(region, "浙江") {
+		return "Hangzhou"
+	}
+	if strings.Contains(region, "jiangsu") || strings.Contains(region, "江苏") {
+		return "Nanjing"
+	}
+	if strings.Contains(region, "fujian") || strings.Contains(region, "福建") {
+		return "Fuzhou"
+	}
+	if strings.Contains(region, "taiwan") || strings.Contains(region, "台湾") {
+		return "Taipei"
+	}
+	if strings.Contains(region, "hong kong") || strings.Contains(region, "香港") {
+		return "Hong Kong"
+	}
+	if strings.Contains(region, "macau") || strings.Contains(region, "macao") || strings.Contains(region, "澳门") {
+		return "Macau"
+	}
+	
+	return "" // 无法推导
+}
+
+// getDefaultCityByISP 根据ISP推导默认城市
+func getDefaultCityByISP(isp string) string {
+	// 根据运营商特点选择合适的默认城市
+	switch isp {
+	case "电信":
+		return "北京" // 电信总部在北京
+	case "联通":
+		return "北京" // 联通总部在北京
+	case "移动":
+		return "北京" // 移动总部在北京
+	case "教育网":
+		return "北京" // CERNET总部在清华大学
+	default:
+		return "北京" // 默认使用北京
+	}
 }
 
 // GetInternalIP 获取本机的内网IP地址
