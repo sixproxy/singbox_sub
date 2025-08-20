@@ -231,6 +231,9 @@ func (cfg *Config) RenderTemplate(delegateParse DelegateParseNodesFunc) error {
 
 				tmpNodes := FilterNodes(proxyNode, filters)
 				o.Outbounds = GetTags(tmpNodes)
+				if len(o.Outbounds) == 0 {
+					o.Outbounds = []string{constant.OUTBOUND_BLOCK}
+				}
 			}
 			// 删除filter
 			o.Filters = nil
