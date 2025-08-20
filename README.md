@@ -1,9 +1,4 @@
 # SingBox 订阅配置生成器
-- 支持多协议的 Sing-box 订阅配置生成工具，具备智能 DNS 检测和 CDN 优化功能。
-- 本项目使用只支持当前sing-box的最新的两个稳定版本。
-  - 其中Linux支持最新版本部署和最新版本配置
-  - Mac和iOS都使用上一个稳定版本和上一个稳定版本配置。
-
 ## ✨ 特性
 - 🔧 **多协议支持**: Shadowsocks、Hysteria2、Trojan、AnyTLS、VLESS+Reality
 - 🌐 **智能 DNS**: 自动检测运营商 DNS
@@ -12,37 +7,58 @@
 - 🌍 **跨平台**: 支持 Linux、macOS、iOS
 
 ## 🚀 快速开始
+### 1.下载安装包 && 解压 
+以linux平台X86架构，64位安装包为例子
 
-### 1. 配置订阅
-
+下载
 ```bash
-# 编辑配置文件
+wget -O sub.tar.gz https://ghfast.top/https://github.com/sixproxy/singbox_sub/releases/download/v1.2.1/sub-linux-amd64.tar.gz
+```
+
+解压
+```bash
+tar -zxvf sub.tar.gz
+```
+
+进入解压目录
+```bash
+cd linux-amd64/
+```
+
+
+### 2. 配置订阅
+
+更新到最新版
+```bash
+./sub update
+```
+
+编辑配置文件
+```bash
 vim config/config.yaml
 ```
 
 **config.yaml 示例:**
 ```yaml
 subs:
-  - url: "YOUR_SUBSCRIPTION_URL"
+  - url: "YOUR_SUBSCRIPTION_URL"  # 填写订阅地址
     insecure: false
 
 dns:
-  auto_optimize: true  # 启用智能 CDN 优化
+  auto_optimize: true             # 启用智能 CDN 优化
 ```
 
-### 2. 运行程序
-- 最常使用
-
-这个命令会生成sing-box的配置，并自动启动sing-box。如果只是需要生成配置，参考 **3.其他命令** 部分
+### 3. 运行程序
+给可执行权限
 ```bash
-# 运行
 chmod +x sub
+```
+
+运行
+```bash
+
 ./sub
 ```
-
-Linux系统生成的配置文件:   `linux_config.json`
-
-iOS、Mac系统生成的配置文件: `mac_config.json`
 
 **Tips:**
 
@@ -50,7 +66,12 @@ iOS、Mac系统生成的配置文件: `mac_config.json`
     Mac端和iOS端的配置文件都使用比较旧的一个版本。
     这样可以稳定使用, 减少折腾。
 
-### 3. 其他命令
+### 5. 其他命令
+- 查询版本
+```bash
+./sub version
+```
+
 - 查看命令行帮助
 ```bash
 ./sub -h
@@ -67,17 +88,9 @@ iOS、Mac系统生成的配置文件: `mac_config.json`
 ```bash
 ./sub -os all
 ```
+- Linux系统生成的配置文件:   `linux_config.json`
+- iOS、Mac系统生成的配置文件: `mac_config.json`
 
-
-
-## 📋 CDN 优化
-
-程序自动检测你的地理位置和运营商，设置最优的 client_subnet：
-
-- 🏙️ **支持城市**: 北京、上海、广州、深圳、杭州、南京、福州、泉州
-- 🏢 **支持运营商**: 电信、联通、移动、教育网
-- 🔒 **隐私保护**: 使用运营商网段，不暴露真实 IP
-- ⚡ **性能提升**: ECS (EDNS Client Subnet) 优化 CDN 响应
 
 ## 🏗️ 构建
 
