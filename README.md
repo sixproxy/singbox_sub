@@ -83,10 +83,7 @@ iOS、Mac系统生成的配置文件: `mac_config.json`
 
 ### 本地构建
 ```bash
-# 构建所有平台
-./scripts/build.sh
-
-# 或使用 Go 直接构建
+# Go 直接构建
 go build -o singbox-sub ./src/github.com/sixproxy/sub.go
 ```
 
