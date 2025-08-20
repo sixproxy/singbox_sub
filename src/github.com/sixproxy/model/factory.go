@@ -14,6 +14,8 @@ func NewOutbound(outboundType string) OutboundConfig {
 		return &TrojanConfig{Outbound: Outbound{Type: outboundType}}
 	case constant.OUTBOUND_ANYTLS:
 		return &AnytlsConfig{Outbound: Outbound{Type: outboundType}}
+	case constant.OUTBOUND_VLESS:
+		return &VlessConfig{Outbound: Outbound{Type: outboundType}}
 	case constant.OUTBOUND_SELECTOR:
 		return &SelectorOutbound{Outbound: Outbound{Type: outboundType}}
 	case constant.OUTBOUND_URLTEST:

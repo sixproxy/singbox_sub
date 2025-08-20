@@ -371,7 +371,7 @@ func testConfigOutput(t *testing.T, config *model.Config) {
 
 	// 测试文件输出
 	testFile := "test_trojan_config.json"
-	err = config.SingboxConfig(testFile)
+	err = config.LinuxConfig(testFile)
 	if err != nil {
 		t.Fatalf("配置文件输出失败: %v", err)
 	}

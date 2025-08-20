@@ -5,7 +5,7 @@
   - Mac和iOS都使用上一个稳定版本和上一个稳定版本配置。
 
 ## ✨ 特性
-- 🔧 **多协议支持**: Shadowsocks、Hysteria2、Trojan、AnyTLS
+- 🔧 **多协议支持**: Shadowsocks、Hysteria2、Trojan、AnyTLS、VLESS+Reality
 - 🌐 **智能 DNS**: 自动检测运营商 DNS
 - 🚀 **CDN 优化**: 城市级精确定位，自动设置 client_subnet
 - ⚙️ **配置系统**: YAML 配置覆盖，简化使用
