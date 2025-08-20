@@ -56,7 +56,6 @@ chmod +x sub
 
 运行
 ```bash
-
 ./sub
 ```
 
@@ -138,6 +137,7 @@ docker run -v $(pwd)/config.yaml:/app/config.yaml singbox-sub
 - [ ] 完善ss协议支持
 - [ ] 完善socks协议支持
 - [ ] 可自由定制前缀
+- [ ] 支持配置自定义github镜像
 - [ ] 提供web页面管理
 
 ## 📄 许可证
