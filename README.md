@@ -117,16 +117,23 @@ docker run -v $(pwd)/config.yaml:/app/config.yaml singbox-sub
   - `url`: 订阅地址
   - `insecure`: 跳过 SSL 验证
   - `prefix`: 节点名前缀
-  - `enabled`: 是否启用
 
 ### DNS 配置
 - `auto_optimize`: 启用自动 DNS 和 CDN 优化.如果启用,自动设置client_subnet
 - `client_subnet`: 手动指定 ECS 网段
 - `final`: DNS 最终服务器
 
-## 🤝 贡献
-
-欢迎提交 Issues 和 Pull Requests！
+## 🤝 新功能开发中
+- [ ] 添加sing-box最新稳定版下载功能
+- [ ] 添加自动挑选可用github镜像功能
+- [ ] 如果sing-box启动失败, 打印出sing-box启动失败的具体原因, 回滚sing-box之前配置，并重新启动sing-box.
+- [ ] Wiki添加模版配置说明
+- [ ] 增加tuic协议支持
+- [ ] 增加wg协议支持
+- [ ] 完善ss协议支持
+- [ ] 完善socks协议支持
+- [ ] 可自由定制前缀
+- [ ] 提供web页面管理
 
 ## 📄 许可证
 
