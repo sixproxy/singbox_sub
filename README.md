@@ -66,6 +66,11 @@ chmod +x sub
     Mac端和iOS端的配置文件都使用比较旧的一个版本。
     这样可以稳定使用, 减少折腾。
 
+### 4.模版配置
+如果想自定义模版，可以参考[wiki](https://github.com/sixproxy/singbox_sub/wiki)
+
+**小白建议就用我的模版就够了**
+
 ### 5. 其他命令
 - 查询版本
 ```bash
