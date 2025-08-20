@@ -88,7 +88,18 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir -p dist
-          go build -v -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name || github.sha }}" -o dist/${{ matrix.output }} ./src/github.com/sixproxy
+          
+          # 提取版本号和构建时间
+          VERSION="${{ github.ref_name }}"
+          if [[ "$VERSION" == "refs/heads/"* ]]; then
+            VERSION="${{ github.sha }}"
+          fi
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # 构建带版本信息的二进制
+          go build -v -trimpath \
+            -ldflags="-s -w -X 'singbox_sub/src/github.com/sixproxy/version.VERSION=$VERSION' -X 'singbox_sub/src/github.com/sixproxy/version.buildTime=$BUILD_TIME'" \
+            -o dist/${{ matrix.output }} ./src/github.com/sixproxy/sub.go
 
       # 新增：把二进制重命名为唯一名字，防止 artifact 相互覆盖
       - name: Rename binary with platform suffix for artifact

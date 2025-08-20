@@ -11,17 +11,49 @@ import (
 	"singbox_sub/src/github.com/sixproxy/logger"
 	"singbox_sub/src/github.com/sixproxy/model"
 	"singbox_sub/src/github.com/sixproxy/protocol"
+	"singbox_sub/src/github.com/sixproxy/updater"
+	"singbox_sub/src/github.com/sixproxy/version"
 	"time"
 )
 
 func main() {
 	// 0.解析命令行参数
 	var (
-		targetOS = flag.String("os", "auto", "目标操作系统 (auto/darwin/linux/windows/all)")
-		verbose  = flag.Bool("v", false, "详细输出 (启用DEBUG日志)")
-		help     = flag.Bool("h", false, "显示帮助信息")
+		targetOS    = flag.String("os", "auto", "目标操作系统 (auto/darwin/linux/windows/all)")
+		verbose     = flag.Bool("v", false, "详细输出 (启用DEBUG日志)")
+		help        = flag.Bool("h", false, "显示帮助信息")
+		versionFlag = flag.Bool("version", false, "显示版本信息")
+		update      = flag.Bool("update", false, "检查并更新到最新版本")
 	)
 	flag.Parse()
+
+	// 处理非标志参数命令 (如 "sub version", "sub update")
+	args := flag.Args()
+	if len(args) > 0 {
+		switch args[0] {
+		case "version":
+			version.PrintVersion()
+			return
+		case "update":
+			handleUpdate()
+			return
+		case "help":
+			printUsage()
+			return
+		}
+	}
+
+	// 处理版本命令
+	if *versionFlag {
+		version.PrintVersion()
+		return
+	}
+
+	// 处理更新命令
+	if *update {
+		handleUpdate()
+		return
+	}
 
 	if *help {
 		printUsage()
@@ -91,16 +123,32 @@ func delegateParse(nodes []string) []string {
 	return configNodes
 }
 
+// handleUpdate 处理更新命令
+func handleUpdate() {
+	updaterInstance, err := updater.NewUpdater()
+	if err != nil {
+		logger.Error("创建更新器失败: %v", err)
+		return
+	}
+	defer updaterInstance.Cleanup()
+
+	if err := updaterInstance.CheckUpdate(); err != nil {
+		logger.Error("更新失败: %v", err)
+	}
+}
+
 // printUsage 显示使用帮助
 func printUsage() {
 	logger.Info("=== sing-box配置生成器 ===")
-	logger.Info("用法: %s [选项]", "singbox_sub")
+	logger.Info("用法: %s [选项]", "sub")
 	logger.Info("")
 	logger.Info("选项:")
 	logger.Info("  -os string    目标操作系统 (默认: auto)")
 	logger.Info("                可选值: auto, darwin, linux, windows, all")
 	logger.Info("  -v            详细输出模式 (启用DEBUG日志)")
 	logger.Info("  -h            显示此帮助信息")
+	logger.Info("  -version      显示版本信息")
+	logger.Info("  -update       检查并更新到最新版本")
 	logger.Info("")
 	logger.Info("Linux自动化功能 (仅在Linux系统上生效):")
 	logger.Info("  • 程序启动时自动停止sing-box服务")
@@ -110,15 +158,19 @@ func printUsage() {
 	logger.Info("  • 需要bash/stop_singbox.sh和bash/start_singbox.sh脚本")
 	logger.Info("")
 	logger.Info("示例:")
-	logger.Info("  ./singbox_sub                    # 自动检测系统类型")
-	logger.Info("  ./singbox_sub -os darwin         # 强制生成macOS配置")
-	logger.Info("  ./singbox_sub -os linux          # 强制生成Linux配置")
-	logger.Info("  ./singbox_sub -os all            # 生成所有类型配置")
-	logger.Info("  ./singbox_sub -v                 # 详细输出模式")
+	logger.Info("  ./sub                            # 自动检测系统类型")
+	logger.Info("  ./sub -os darwin                 # 强制生成macOS配置")
+	logger.Info("  ./sub -os linux                  # 强制生成Linux配置")
+	logger.Info("  ./sub -os all                    # 生成所有类型配置")
+	logger.Info("  ./sub -v                         # 详细输出模式")
+	logger.Info("  ./sub version                    # 查看版本信息")
+	logger.Info("  ./sub update                     # 检查并更新程序")
+	logger.Info("  ./sub -version                   # 查看版本信息 (标志形式)")
+	logger.Info("  ./sub -update                    # 检查并更新程序 (标志形式)")
 	logger.Info("")
 	logger.Info("Linux生产环境:")
-	logger.Info("  ./singbox_sub                    # 完整自动化部署")
-	logger.Info("  ./singbox_sub -v                 # 详细查看部署过程")
+	logger.Info("  ./sub                            # 完整自动化部署")
+	logger.Info("  ./sub -v                         # 详细查看部署过程")
 }
 
 // generateSystemConfig 根据系统类型生成相应的配置文件
