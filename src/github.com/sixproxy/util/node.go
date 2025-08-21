@@ -1,6 +1,7 @@
 package util
 
 import (
+	"net/url"
 	"regexp"
 	"singbox_sub/src/github.com/sixproxy/constant"
 	"strings"
@@ -67,4 +68,49 @@ func InvalidNode(tag string) bool {
 	default:
 		return false
 	}
+}
+
+func RemoveEmoji(s string) string {
+	bs := []byte(s)
+	out := bs[:0] // 复用原切片，省一次分配
+
+	for i := 0; i < len(bs); {
+		// 4 字节 UTF-8 的首字节一定是 0xF0~0xF4
+		if bs[i]&0xF8 == 0xF0 { // 0xF0 = 11110000
+			// 跳过这 4 字节（一个 emoji）
+			i += 4
+			continue
+		}
+		// 普通字符，拷贝过去
+		out = append(out, bs[i])
+		i++
+	}
+	return string(out)
+}
+
+func ParseTag(data string) string {
+
+	// 处理 # 标签
+	if hashIndex := strings.Index(data, "#"); hashIndex != -1 {
+		if hashIndex+1 < len(data) {
+			tag, err := url.QueryUnescape(data[hashIndex+1:])
+			if err == nil && tag != "" {
+				return strings.TrimSpace(RemoveEmoji(tag))
+			}
+		}
+		data = data[:hashIndex]
+	}
+
+	// 处理 ?remarks= 标签
+	if remarksIndex := strings.Index(data, "?remarks="); remarksIndex != -1 {
+		if remarksIndex+9 < len(data) {
+			tag, err := url.QueryUnescape(data[remarksIndex+9:])
+			if err == nil && tag != "" {
+				return RemoveEmoji(tag)
+			}
+		}
+		data = data[:remarksIndex]
+	}
+
+	return ""
 }

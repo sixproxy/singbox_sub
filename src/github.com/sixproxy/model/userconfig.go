@@ -8,7 +8,7 @@ import (
 	"os"
 	"singbox_sub/src/github.com/sixproxy/constant"
 	"singbox_sub/src/github.com/sixproxy/logger"
-	"singbox_sub/src/github.com/sixproxy/util"
+	"singbox_sub/src/github.com/sixproxy/service"
 	"strings"
 	"time"
 )
@@ -130,26 +130,25 @@ func updateTemplateMirrors(templatePath string, githubConfig *GitHubConfig) (str
 	}
 
 	// 3. 检查模板中是否包含占位符
-	if !strings.Contains(originalContent, "{{mirror_url}}") {
-		logger.Info("✅ 模板未使用{{mirror_url}}占位符，无需更新")
+	if !strings.Contains(originalContent, constant.MIRROR_URL) {
+		logger.Info(fmt.Sprintf("✅ 模板未使用%s占位符，无需更新", constant.MIRROR_URL))
 		return originalContent, nil
 	}
 
 	// 4. 替换占位符
 	newContent := replaceMirrorPlaceholder(originalContent, targetMirror)
 
-	// 7. 验证更新结果
-	mirrorCount := strings.Count(originalContent, "{{mirror_url}}")
-
 	logger.Info("✅ 成功更新模板镜像地址")
 	logger.Info("   镜像地址: %s", targetMirror)
-	logger.Info("   更新了 %d 个{{mirror_url}}占位符", mirrorCount)
 
 	return newContent, nil
 }
 
 // mergeYAMLConfig 将YAML配置覆盖到模板配置中
 func mergeYAMLConfig(template *Config, userConfig *UserConfig) {
+	// 初始化service的城市映射提供者
+	service.SetCityMappingProvider(&CityMappingAdapter{})
+
 	// 1. 覆盖订阅配置
 	if len(userConfig.Subs) > 0 {
 		template.Subs = userConfig.Subs
@@ -157,7 +156,7 @@ func mergeYAMLConfig(template *Config, userConfig *UserConfig) {
 
 	// 2. 自动设置experimental功能配置 - 使用内网IP:9095
 	if template.Experimental.ClashAPI.ExternalController == "" {
-		internalIP := util.GetInternalIP()
+		internalIP := service.GetInternalIP()
 		template.Experimental.ClashAPI.ExternalController = fmt.Sprintf("%s:9095", internalIP)
 		logger.ConfigInfo("自动设置 external_controller: %s", template.Experimental.ClashAPI.ExternalController)
 	}
@@ -173,12 +172,12 @@ func mergeYAMLConfig(template *Config, userConfig *UserConfig) {
 
 		// 配置自动优化，就使用自动优化设置
 		if userConfig.DNS.AutoOptimize == true {
-			client_subnet := util.GetOptimalClientSubnet()
+			client_subnet := service.GetOptimalClientSubnet()
 			template.DNS.ClientSubnet = client_subnet
 			template.Route.DefaultDomainResolver.ClientSubnet = client_subnet
 			for i, server := range template.DNS.Servers {
 				if server.Tag == constant.DNS_LOCAL {
-					dns_local := util.GetISPDNS()[0]
+					dns_local := service.GetISPDNS()[0]
 					logger.ConfigInfo("自动获取本地运营商DNS: %s", dns_local)
 					template.DNS.Servers[i].Server = dns_local
 				}
@@ -232,7 +231,7 @@ func replaceMirrorPlaceholder(content, mirrorURL string) string {
 	cleanMirrorURL := strings.TrimSuffix(mirrorURL, "/")
 
 	// 简单的字符串替换
-	return strings.ReplaceAll(content, "{{mirror_url}}", cleanMirrorURL)
+	return strings.ReplaceAll(content, constant.MIRROR_URL, cleanMirrorURL)
 }
 
 // testMirrorConnectivity 测试镜像连通性
