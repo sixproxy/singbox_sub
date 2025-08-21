@@ -15,11 +15,11 @@ import (
 
 // DownloadConfig 下载配置
 type DownloadConfig struct {
-	URL         string
-	DestDir     string
-	Filename    string
-	Timeout     time.Duration
-	MaxRetries  int
+	URL          string
+	DestDir      string
+	Filename     string
+	Timeout      time.Duration
+	MaxRetries   int
 	ShowProgress bool
 }
 
@@ -243,22 +243,4 @@ func CalculateFileChecksum(filePath string) (string, error) {
 	}
 
 	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-// CopyFile 复制文件
-func CopyFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
 }

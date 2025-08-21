@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"singbox_sub/src/github.com/sixproxy/updater"
+	"singbox_sub/src/github.com/sixproxy/service"
 	"testing"
 	"time"
 )
@@ -17,23 +17,23 @@ func TestSingboxManagerIntegration(t *testing.T) {
 		t.Skip("跳过集成测试（使用 -short 标志）")
 	}
 
-	manager := updater.NewSingboxManager()
-	
+	manager := service.NewSingboxService()
+
 	// 测试获取最新版本（需要网络连接）
 	t.Run("GetLatestVersion", func(t *testing.T) {
 		latest, err := manager.GetLatestVersion()
 		if err != nil {
 			t.Fatalf("获取最新版本失败: %v", err)
 		}
-		
+
 		if latest.TagName == "" {
 			t.Error("版本标签不应为空")
 		}
-		
+
 		if len(latest.Assets) == 0 {
 			t.Error("应该有可用的资产")
 		}
-		
+
 		t.Logf("最新版本: %s", latest.TagName)
 		t.Logf("发布时间: %s", latest.PublishedAt)
 		t.Logf("资产数量: %d", len(latest.Assets))
@@ -45,7 +45,7 @@ func TestSingboxManagerIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("检查更新失败: %v", err)
 		}
-		
+
 		t.Logf("是否有更新: %v", hasUpdate)
 		if latest != nil {
 			t.Logf("最新版本: %s", latest.TagName)
@@ -58,11 +58,11 @@ func TestSingboxManagerIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("获取最新版本失败: %v", err)
 		}
-		
+
 		// 使用反射访问私有方法（或者将方法设为公共的）
 		// 这里我们跳过这个测试，因为方法是私有的
 		t.Logf("当前平台: %s/%s", runtime.GOOS, runtime.GOARCH)
-		
+
 		// 检查是否有适合当前平台的资产
 		found := false
 		for _, asset := range latest.Assets {
@@ -72,7 +72,7 @@ func TestSingboxManagerIntegration(t *testing.T) {
 				break
 			}
 		}
-		
+
 		if !found {
 			t.Errorf("未找到适合 %s/%s 平台的资产", runtime.GOOS, runtime.GOARCH)
 		}
@@ -87,13 +87,13 @@ func containsPlatform(assetName, os, arch string) bool {
 		"darwin":  {"darwin", "macos"},
 		"windows": {"windows", "win"},
 	}
-	
+
 	archNames := map[string][]string{
 		"amd64": {"amd64", "x64", "x86_64"},
 		"arm64": {"arm64", "aarch64"},
 		"386":   {"386", "i386", "x86"},
 	}
-	
+
 	// 检查OS
 	osFound := false
 	if osList, exists := osNames[os]; exists {
@@ -104,7 +104,7 @@ func containsPlatform(assetName, os, arch string) bool {
 			}
 		}
 	}
-	
+
 	// 检查架构
 	archFound := false
 	if archList, exists := archNames[arch]; exists {
@@ -115,18 +115,18 @@ func containsPlatform(assetName, os, arch string) bool {
 			}
 		}
 	}
-	
+
 	return osFound && archFound
 }
 
 // contains 检查字符串是否包含子字符串（不区分大小写）
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		   (s == substr || 
-		    len(s) > len(substr) && 
-		    (s[0:len(substr)] == substr || 
-		     s[len(s)-len(substr):] == substr ||
-		     containsInMiddle(s, substr)))
+	return len(s) >= len(substr) &&
+		(s == substr ||
+			len(s) > len(substr) &&
+				(s[0:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
+					containsInMiddle(s, substr)))
 }
 
 func containsInMiddle(s, substr string) bool {
@@ -163,10 +163,10 @@ func TestMainProgramSingboxIntegration(t *testing.T) {
 	}
 
 	// 构建程序
-	buildCmd := exec.Command("go", "build", "-o", binaryPath, 
+	buildCmd := exec.Command("go", "build", "-o", binaryPath,
 		filepath.Join(projectRoot, "src/github.com/sixproxy/sub.go"))
 	buildCmd.Dir = projectRoot
-	
+
 	if output, err := buildCmd.CombinedOutput(); err != nil {
 		t.Fatalf("构建程序失败: %v\n输出: %s", err, string(output))
 	}
@@ -178,18 +178,18 @@ func TestMainProgramSingboxIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("执行help命令失败: %v", err)
 		}
-		
+
 		outputStr := string(output)
-		
+
 		// 检查是否包含新添加的选项
 		if !contains(outputStr, "install-singbox") {
 			t.Error("帮助信息应包含 install-singbox 选项")
 		}
-		
+
 		if !contains(outputStr, "skip-singbox-check") {
 			t.Error("帮助信息应包含 skip-singbox-check 选项")
 		}
-		
+
 		if !contains(outputStr, "sing-box管理功能") {
 			t.Error("帮助信息应包含 sing-box管理功能 说明")
 		}
@@ -202,7 +202,7 @@ func TestMainProgramSingboxIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("执行version命令失败: %v", err)
 		}
-		
+
 		outputStr := string(output)
 		if !contains(outputStr, "singbox_sub version") {
 			t.Error("版本信息格式不正确")
@@ -223,7 +223,7 @@ func TestMainProgramSingboxIntegration(t *testing.T) {
     insecure: false
 dns:
   auto_optimize: true`
-		
+
 		configPath := filepath.Join(configDir, "config.yaml")
 		if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 			t.Fatalf("创建配置文件失败: %v", err)
@@ -249,7 +249,7 @@ dns:
   "outbounds": [],
   "route": {"final": "direct", "auto_detect_interface": true}
 }`
-		
+
 		templatePath := filepath.Join(configDir, "template-v1.12.json")
 		if err := os.WriteFile(templatePath, []byte(templateContent), 0644); err != nil {
 			t.Fatalf("创建模板文件失败: %v", err)
@@ -258,7 +258,7 @@ dns:
 		// 测试跳过sing-box检查的命令
 		cmd := exec.Command(binaryPath, "-skip-singbox-check")
 		cmd.Dir = tempDir
-		
+
 		// 设置超时
 		timer := time.AfterFunc(30*time.Second, func() {
 			if cmd.Process != nil {
@@ -266,16 +266,16 @@ dns:
 			}
 		})
 		defer timer.Stop()
-		
+
 		output, err := cmd.CombinedOutput()
-		
+
 		// 这个命令可能会失败（因为没有有效的订阅URL），但不应该因为sing-box检查而失败
 		outputStr := string(output)
 		t.Logf("输出: %s", outputStr)
 		if err != nil {
 			t.Logf("命令执行错误（预期的）: %v", err)
 		}
-		
+
 		// 检查是否跳过了sing-box检查
 		if contains(outputStr, "检测到sing-box") || contains(outputStr, "未检测到sing-box") {
 			t.Error("应该跳过sing-box检查")
@@ -293,8 +293,8 @@ func TestSingboxManagerRealInstall(t *testing.T) {
 		t.Skip("Windows真实安装测试需要管理员权限，跳过")
 	}
 
-	manager := updater.NewSingboxManager()
-	
+	manager := service.NewSingboxService()
+
 	t.Run("RealInstall", func(t *testing.T) {
 		// 备份现有安装（如果有）
 		var backupPath string

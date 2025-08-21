@@ -54,7 +54,7 @@ func (f *Files) BackupFile(src string, dst string) (string, error) {
 	}
 
 	// 复制当前程序到备份位置
-	if err := f.copyFile(src, backupPath); err != nil {
+	if err := CopyFile(src, backupPath); err != nil {
 		return "", fmt.Errorf("备份文件失败: %v", err)
 	}
 
@@ -83,7 +83,7 @@ func (f *Files) replaceOnWindows(srcBinaryPath string, dstBinaryPath string) err
 	}
 
 	// 复制新程序到原位置
-	if err := f.copyFile(srcBinaryPath, dstBinaryPath); err != nil {
+	if err := CopyFile(srcBinaryPath, dstBinaryPath); err != nil {
 		// 恢复原文件
 		os.Rename(tempOldPath, dstBinaryPath)
 		return fmt.Errorf("复制新程序失败: %v", err)
@@ -99,7 +99,7 @@ func (f *Files) replaceOnWindows(srcBinaryPath string, dstBinaryPath string) err
 // replaceOnUnix Unix平台的替换策略
 func (f *Files) replaceOnUnix(srcBinaryPath string, dstBinaryPath string) error {
 	// 尝试直接替换
-	err := f.copyFile(srcBinaryPath, dstBinaryPath)
+	err := CopyFile(srcBinaryPath, dstBinaryPath)
 	if err == nil {
 		// 设置执行权限
 		if err := os.Chmod(dstBinaryPath, 0755); err != nil {
@@ -123,7 +123,7 @@ func (f *Files) replaceWithRename(srcBinaryPath string, dstBinaryPath string) er
 	}
 
 	// 2. 复制新程序到原位置
-	if err := f.copyFile(srcBinaryPath, dstBinaryPath); err != nil {
+	if err := CopyFile(srcBinaryPath, dstBinaryPath); err != nil {
 		// 恢复原文件
 		os.Rename(oldPath, dstBinaryPath)
 		return fmt.Errorf("复制新程序失败: %v", err)
@@ -146,7 +146,7 @@ func (f *Files) replaceWithRename(srcBinaryPath string, dstBinaryPath string) er
 func (f *Files) RestoreBackup(srcPath string, dstPath string) error {
 	logger.Info("正在恢复备份...")
 
-	if err := f.copyFile(srcPath, dstPath); err != nil {
+	if err := CopyFile(srcPath, dstPath); err != nil {
 		return fmt.Errorf("恢复备份失败: %v", err)
 	}
 
@@ -162,7 +162,7 @@ func (f *Files) RestoreBackup(srcPath string, dstPath string) error {
 }
 
 // copyFile 复制文件
-func (f *Files) copyFile(src, dst string) error {
+func CopyFile(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err

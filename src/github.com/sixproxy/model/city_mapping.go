@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"singbox_sub/src/github.com/sixproxy/logger"
-	"singbox_sub/src/github.com/sixproxy/util"
 	"strings"
 	"sync"
 
@@ -257,7 +256,7 @@ func GetCityISPSubnet(city, isp string) string {
 }
 
 // GetFallbackSubnet 获取备选网段（新的配置文件版本）
-func GetFallbackSubnet(location *util.LocationInfo) string {
+func GetFallbackSubnet(location *LocationInfo) string {
 	ensureConfigLoaded()
 
 	configMutex.RLock()
