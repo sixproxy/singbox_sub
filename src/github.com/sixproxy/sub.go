@@ -203,7 +203,7 @@ func printUsage() {
 func generateSystemConfig(cfg *model.Config, targetOS string) {
 	currentOS := runtime.GOOS
 	logger.Info("当前操作系统: %s", currentOS)
-	
+
 	// 确定要生成的目标系统
 	var effectiveOS string
 	if targetOS == "auto" {
@@ -213,7 +213,7 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 		effectiveOS = targetOS
 		logger.Info("使用指定的目标系统: %s", effectiveOS)
 	}
-	
+
 	switch effectiveOS {
 	case "darwin":
 		// macOS系统
@@ -224,7 +224,7 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 		} else {
 			logger.Info("macOS配置文件生成成功")
 		}
-		
+
 	case "linux":
 		// Linux系统
 		logger.Info("开始生成Linux配置文件...")
@@ -233,14 +233,14 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 			logger.Error("生成Linux配置文件失败: %v", err)
 		} else {
 			logger.Info("Linux配置文件生成成功")
-			
+
 			// 如果是在Linux系统上运行，执行额外的部署步骤
 			if currentOS == "linux" {
 				deployLinuxConfig()
 				startSingBoxService()
 			}
 		}
-		
+
 	case "windows":
 		// Windows系统 - 目前使用Linux配置作为通用配置
 		logger.Info("检测到Windows系统，使用通用配置...")
@@ -250,11 +250,11 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 		} else {
 			logger.Info("Windows配置文件生成成功")
 		}
-		
+
 	case "all":
 		// 生成所有类型的配置文件
 		logger.Info("生成所有类型的配置文件...")
-		
+
 		// 生成Linux配置
 		logger.Info("生成Linux配置文件...")
 		err := cfg.LinuxConfig("")
@@ -263,7 +263,7 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 		} else {
 			logger.Info("Linux配置文件生成成功")
 		}
-		
+
 		// 生成macOS配置
 		logger.Info("生成macOS配置文件...")
 		err = cfg.MacConfig("")
@@ -272,9 +272,9 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 		} else {
 			logger.Info("macOS配置文件生成成功")
 		}
-		
+
 		logger.Info("所有配置文件生成完成，请根据你的系统选择合适的配置")
-		
+
 	default:
 		// 未知系统
 		if targetOS == "auto" {
@@ -284,19 +284,19 @@ func generateSystemConfig(cfg *model.Config, targetOS string) {
 			logger.Info("支持的系统类型: auto, darwin, linux, windows, all")
 			return
 		}
-		
+
 		// 生成Linux配置
 		err := cfg.LinuxConfig("")
 		if err != nil {
 			logger.Error("生成Linux配置文件失败: %v", err)
 		}
-		
+
 		// 生成macOS配置
 		err = cfg.MacConfig("")
 		if err != nil {
 			logger.Error("生成macOS配置文件失败: %v", err)
 		}
-		
+
 		logger.Info("所有配置文件生成完成，请根据你的系统选择合适的配置")
 	}
 }
@@ -315,23 +315,23 @@ func getAvailableShell() string {
 // stopSingBoxService 停止sing-box服务
 func stopSingBoxService() {
 	logger.Info("正在停止sing-box服务...")
-	
+
 	scriptPath := "bash/stop_singbox.sh"
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		logger.Warn("停止脚本不存在: %s，跳过停止步骤", scriptPath)
 		return
 	}
-	
+
 	shell := getAvailableShell()
 	if shell == "" {
 		logger.Error("未找到可用的shell执行器，跳过停止步骤")
 		return
 	}
-	
+
 	logger.Debug("使用shell: %s", shell)
 	cmd := exec.Command(shell, scriptPath)
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		logger.Warn("停止sing-box服务失败: %v", err)
 		logger.Debug("脚本输出: %s", string(output))
@@ -340,7 +340,7 @@ func stopSingBoxService() {
 		if len(output) > 0 {
 			logger.Debug("脚本输出: %s", string(output))
 		}
-		
+
 		// 验证服务是否真的停止了
 		if isSingBoxRunning() {
 			logger.Warn("sing-box进程可能仍在运行，建议手动检查")
@@ -353,17 +353,17 @@ func stopSingBoxService() {
 // deployLinuxConfig 部署Linux配置文件
 func deployLinuxConfig() {
 	logger.Info("正在部署Linux配置文件...")
-	
+
 	sourceFile := "linux_config.json"
 	targetDir := "/etc/sing-box"
 	targetFile := filepath.Join(targetDir, "config.json")
-	
+
 	// 检查源文件是否存在
 	if _, err := os.Stat(sourceFile); os.IsNotExist(err) {
 		logger.Error("源配置文件不存在: %s", sourceFile)
 		return
 	}
-	
+
 	// 创建目标目录（如果不存在）
 	logger.Debug("创建配置目录: %s", targetDir)
 	err := os.MkdirAll(targetDir, 0755)
@@ -371,7 +371,7 @@ func deployLinuxConfig() {
 		logger.Error("创建配置目录失败: %v", err)
 		return
 	}
-	
+
 	// 拷贝配置文件
 	logger.Debug("拷贝配置文件: %s -> %s", sourceFile, targetFile)
 	err = copyFile(sourceFile, targetFile)
@@ -379,32 +379,32 @@ func deployLinuxConfig() {
 		logger.Error("拷贝配置文件失败: %v", err)
 		return
 	}
-	
+
 	// 设置文件权限
 	err = os.Chmod(targetFile, 0644)
 	if err != nil {
 		logger.Warn("设置配置文件权限失败: %v", err)
 	}
-	
+
 	logger.Info("配置文件已成功部署到: %s", targetFile)
 }
 
 // startSingBoxService 启动sing-box服务（带失败检测和回滚）
 func startSingBoxService() {
 	logger.Info("正在启动sing-box服务...")
-	
+
 	scriptPath := "bash/start_singbox.sh"
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
 		logger.Warn("启动脚本不存在: %s，跳过启动步骤", scriptPath)
 		return
 	}
-	
+
 	shell := getAvailableShell()
 	if shell == "" {
 		logger.Error("未找到可用的shell执行器，跳过启动步骤")
 		return
 	}
-	
+
 	// 备份当前配置
 	configBackupPath := "/etc/sing-box/config.json.backup"
 	configPath := "/etc/sing-box/config.json"
@@ -415,25 +415,25 @@ func startSingBoxService() {
 			logger.Debug("已备份配置文件到: %s", configBackupPath)
 		}
 	}
-	
+
 	logger.Debug("使用shell: %s", shell)
 	cmd := exec.Command(shell, scriptPath)
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		logger.Error("启动sing-box服务失败: %v", err)
 		logger.Debug("脚本输出: %s", string(output))
-		
+
 		// 尝试回滚配置并重新启动
 		handleStartupFailure(configBackupPath, configPath)
 		return
 	}
-	
+
 	logger.Info("sing-box服务启动命令已执行")
 	if len(output) > 0 {
 		logger.Debug("脚本输出: %s", string(output))
 	}
-	
+
 	// 等待并检查启动状态
 	if !checkSingboxStartupStatus() {
 		logger.Error("sing-box启动失败，正在回滚配置...")
@@ -450,29 +450,29 @@ func startSingBoxService() {
 // checkSingboxStartupStatus 检查sing-box启动状态
 func checkSingboxStartupStatus() bool {
 	logger.Info("检查sing-box启动状态...")
-	
+
 	// 等待几秒钟让服务完全启动
 	maxWait := 10 * time.Second
 	checkInterval := 1 * time.Second
 	waited := time.Duration(0)
-	
+
 	for waited < maxWait {
 		time.Sleep(checkInterval)
 		waited += checkInterval
-		
+
 		// 检查进程是否存在
 		if isSingBoxRunning() {
 			logger.Debug("sing-box进程运行中...")
-			
+
 			// 尝试获取版本信息来验证服务状态
 			manager := updater.NewSingboxManager()
 			if manager.IsInstalled() {
 				if version, err := manager.GetInstalledVersion(); err == nil {
 					logger.Debug("sing-box版本验证成功: %s", version.Version)
-					
+
 					// 额外等待2秒确保服务完全稳定
 					time.Sleep(2 * time.Second)
-					
+
 					// 最后检查进程是否仍在运行
 					if isSingBoxRunning() {
 						return true
@@ -488,7 +488,7 @@ func checkSingboxStartupStatus() bool {
 			logger.Debug("sing-box进程未运行...")
 		}
 	}
-	
+
 	logger.Error("等待 %.0f 秒后，sing-box仍未成功启动", maxWait.Seconds())
 	return false
 }
@@ -496,39 +496,39 @@ func checkSingboxStartupStatus() bool {
 // handleStartupFailure 处理启动失败，回滚配置并重启
 func handleStartupFailure(backupPath, configPath string) {
 	logger.Error("🚨 sing-box启动失败，开始故障处理...")
-	
+
 	// 1. 显示失败原因（尝试获取服务日志）
 	showSingboxFailureReason()
-	
+
 	// 2. 停止可能存在的异常进程
 	stopSingBoxService()
 	time.Sleep(2 * time.Second)
-	
+
 	// 3. 检查是否有备份配置可以回滚
 	if _, err := os.Stat(backupPath); err == nil {
 		logger.Info("🔄 回滚到之前的配置...")
-		
+
 		if err := copyFile(backupPath, configPath); err != nil {
 			logger.Error("回滚配置失败: %v", err)
 			return
 		}
-		
+
 		logger.Info("配置已回滚，尝试重新启动sing-box...")
-		
+
 		// 4. 尝试使用回滚的配置重新启动
 		shell := getAvailableShell()
 		if shell != "" {
 			scriptPath := "bash/start_singbox.sh"
 			cmd := exec.Command(shell, scriptPath)
 			output, err := cmd.CombinedOutput()
-			
+
 			if err != nil {
 				logger.Error("使用回滚配置启动失败: %v", err)
 				logger.Debug("输出: %s", string(output))
 			} else {
 				logger.Info("正在验证回滚配置启动状态...")
 				time.Sleep(3 * time.Second)
-				
+
 				if isSingBoxRunning() {
 					logger.Info("✅ 使用回滚配置成功启动sing-box")
 					// 清理失败的配置文件（重命名为.failed）
@@ -552,7 +552,7 @@ func handleStartupFailure(backupPath, configPath string) {
 // showSingboxFailureReason 显示sing-box启动失败的具体原因
 func showSingboxFailureReason() {
 	logger.Info("🔍 分析启动失败原因...")
-	
+
 	// 1. 检查配置文件语法
 	configPath := "/etc/sing-box/config.json"
 	if _, err := os.Stat(configPath); err == nil {
@@ -561,7 +561,7 @@ func showSingboxFailureReason() {
 		if manager.IsInstalled() {
 			cmd := exec.Command(manager.GetBinaryPath(), "check", "-c", configPath)
 			output, err := cmd.CombinedOutput()
-			
+
 			if err != nil {
 				logger.Error("❌ 配置文件检查失败:")
 				logger.Error(string(output))
@@ -570,10 +570,10 @@ func showSingboxFailureReason() {
 			}
 		}
 	}
-	
+
 	// 2. 检查系统资源
 	logger.Debug("检查系统资源...")
-	
+
 	// 3. 尝试获取系统日志中的错误信息
 	if runtime.GOOS == "linux" {
 		// 尝试从systemd日志获取错误
@@ -590,11 +590,11 @@ func showSingboxFailureReason() {
 func newConfigExists(configPath, backupPath string) bool {
 	configData, err1 := os.ReadFile(configPath)
 	backupData, err2 := os.ReadFile(backupPath)
-	
+
 	if err1 != nil || err2 != nil {
 		return true // 如果无法读取，假设它们不同
 	}
-	
+
 	return string(configData) != string(backupData)
 }
 
@@ -605,25 +605,25 @@ func copyFile(src, dst string) error {
 		return fmt.Errorf("打开源文件失败: %v", err)
 	}
 	defer sourceFile.Close()
-	
+
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("创建目标文件失败: %v", err)
 	}
 	defer destFile.Close()
-	
+
 	_, err = io.Copy(destFile, sourceFile)
 	if err != nil {
 		return fmt.Errorf("文件拷贝失败: %v", err)
 	}
-	
+
 	return nil
 }
 
 // isSingBoxRunning 检查sing-box进程是否仍在运行
 func isSingBoxRunning() bool {
 	// 使用pgrep命令检查sing-box进程
-	cmd := exec.Command("pgrep", "-x", "sing-box")
+	cmd := exec.Command("pgrep", "sing-box")
 	err := cmd.Run()
 	// 如果pgrep找到进程，返回码为0；找不到进程返回码为1
 	return err == nil
@@ -682,14 +682,14 @@ func handleSingboxInstall() {
 // showSingboxStatus 显示sing-box状态
 func showSingboxStatus(manager *updater.SingboxManager) {
 	logger.Info("🔍 sing-box状态检查")
-	
+
 	if manager.IsInstalled() {
 		if version, err := manager.GetInstalledVersion(); err == nil {
 			logger.Info("✅ 已安装版本: %s", version.Version)
 		} else {
 			logger.Warn("⚠️ 已安装但无法获取版本: %v", err)
 		}
-		
+
 		if hasUpdate, latest, err := manager.IsUpdateAvailable(); err == nil {
 			if hasUpdate {
 				logger.Info("🆕 有新版本可用: %s", latest.TagName)
@@ -712,13 +712,13 @@ func showSingboxVersion(manager *updater.SingboxManager) {
 		logger.Error("❌ sing-box未安装")
 		os.Exit(1)
 	}
-	
+
 	version, err := manager.GetInstalledVersion()
 	if err != nil {
 		logger.Error("获取版本失败: %v", err)
 		os.Exit(1)
 	}
-	
+
 	logger.Info("sing-box version %s", version.Version)
 	logger.Info("Binary path: %s", manager.GetBinaryPath())
 	logger.Info("Config path: %s", manager.GetConfigPath())
@@ -746,7 +746,7 @@ func printBoxUsage() {
 // checkSingboxStatus 检查sing-box状态
 func checkSingboxStatus() {
 	manager := updater.NewSingboxManager()
-	
+
 	if manager.IsInstalled() {
 		version, err := manager.GetInstalledVersion()
 		if err != nil {
@@ -754,7 +754,7 @@ func checkSingboxStatus() {
 		} else {
 			logger.Info("检测到sing-box版本: %s", version.Version)
 		}
-		
+
 		// 检查是否有更新
 		hasUpdate, latest, err := manager.IsUpdateAvailable()
 		if err != nil {

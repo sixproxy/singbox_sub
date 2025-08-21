@@ -10,14 +10,10 @@
 ### 1.下载安装包 && 解压 
 以linux平台X86架构，64位安装包为例子
 
-下载
+下载 && 解压
 ```bash
-wget -O sub.tar.gz https://ghfast.top/https://github.com/sixproxy/singbox_sub/releases/download/v1.2.1/sub-linux-amd64.tar.gz
-```
-
-解压
-```bash
-tar -zxvf sub.tar.gz
+wget -O sub.tar.gz https://github.com/sixproxy/singbox_sub/releases/download/v1.12.3/sub-linux-amd64.tar.gz \
+&& tar -zxvf sub.tar.gz
 ```
 
 进入解压目录

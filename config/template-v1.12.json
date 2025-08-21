@@ -1,8 +1,9 @@
 {
   "subs": [
     {"url": "", "prefix": "", "insecure": false}
-  ]
-  ,"log": { "disabled": false, "level": "warn", "timestamp": true},
+  ] ,
+
+  "log": { "disabled": false, "level": "warn", "timestamp": true},
 
   "experimental": {
     "clash_api": {
