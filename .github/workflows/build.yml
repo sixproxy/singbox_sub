@@ -18,39 +18,15 @@ jobs:
           - goos: linux
             goarch: arm64
             output: sub
-          - goos: linux
-            goarch: "386"
-            output: sub
-          - goos: linux
-            goarch: arm
-            goarm: 7
-            output: sub
 
           # Windows
           - goos: windows
             goarch: amd64
             output: sub.exe
-          - goos: windows
-            goarch: "386"
-            output: sub.exe
-          - goos: windows
-            goarch: arm64
-            output: sub.exe
 
           # macOS
           - goos: darwin
-            goarch: amd64
-            output: sub
-          - goos: darwin
             goarch: arm64
-            output: sub
-
-          # FreeBSD
-          - goos: freebsd
-            goarch: amd64
-            output: sub
-          - goos: freebsd
-            goarch: "386"
             output: sub
 
     steps:
