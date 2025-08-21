@@ -78,10 +78,10 @@ func (m *SingboxManager) detectSingboxPath() {
 	// 2. 检查macOS Homebrew路径
 	if runtime.GOOS == "darwin" {
 		homebrewPaths := []string{
-			"/opt/homebrew/bin/sing-box",    // Apple Silicon
-			"/usr/local/bin/sing-box",       // Intel
+			"/opt/homebrew/bin/sing-box", // Apple Silicon
+			"/usr/local/bin/sing-box",    // Intel
 		}
-		
+
 		for _, path := range homebrewPaths {
 			if _, err := os.Stat(path); err == nil {
 				m.binaryPath = path
@@ -113,7 +113,7 @@ func (m *SingboxManager) detectSingboxPath() {
 // getCommonInstallPaths 获取常见的安装路径
 func (m *SingboxManager) getCommonInstallPaths() []string {
 	var paths []string
-	
+
 	switch runtime.GOOS {
 	case "linux":
 		paths = []string{
@@ -138,14 +138,14 @@ func (m *SingboxManager) getCommonInstallPaths() []string {
 		if programFilesX86 == "" {
 			programFilesX86 = "C:\\Program Files (x86)"
 		}
-		
+
 		paths = []string{
 			filepath.Join(programFiles, "sing-box", "sing-box.exe"),
 			filepath.Join(programFilesX86, "sing-box", "sing-box.exe"),
 			filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "sing-box", "sing-box.exe"),
 		}
 	}
-	
+
 	return paths
 }
 
@@ -173,7 +173,7 @@ func (m *SingboxManager) setDefaultPaths() {
 		m.installDir = "/usr/local/bin"
 		m.binaryPath = filepath.Join(m.installDir, "sing-box")
 	}
-	
+
 	m.setConfigPath()
 }
 
@@ -233,11 +233,11 @@ func (m *SingboxManager) GetInstalledVersion() (*SingboxVersion, error) {
 func (m *SingboxManager) GetLatestVersion() (*SingboxRelease, error) {
 	// 获取GitHub配置
 	githubConfig := model.GetGitHubConfig()
-	
+
 	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", SINGBOX_GITHUB_REPO)
 
 	logger.Debug("正在请求GitHub API: %s", url)
-	
+
 	// 临时禁用镜像功能，直接使用原始API
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -296,12 +296,12 @@ func (m *SingboxManager) fetchWithMirror(url string, githubConfig *model.GitHubC
 	}
 
 	var lastErr error
-	
+
 	// 尝试使用主要镜像
 	if githubConfig.MirrorURL != "" {
 		mirrorURL := m.convertAPIURL(url, githubConfig.MirrorURL)
 		logger.Debug("尝试使用主镜像: %s", mirrorURL)
-		
+
 		resp, err := client.Get(mirrorURL)
 		if err == nil && resp.StatusCode < 400 {
 			logger.Debug("使用主镜像成功")
@@ -320,7 +320,7 @@ func (m *SingboxManager) fetchWithMirror(url string, githubConfig *model.GitHubC
 		for _, mirror := range githubConfig.FallbackMirrors {
 			mirrorURL := m.convertAPIURL(url, mirror)
 			logger.Debug("尝试使用备用镜像: %s", mirrorURL)
-			
+
 			resp, err := client.Get(mirrorURL)
 			if err == nil && resp.StatusCode < 400 {
 				logger.Debug("使用备用镜像成功: %s", mirror)
@@ -483,13 +483,13 @@ func (m *SingboxManager) installFromGitHub() error {
 	}
 
 	// 使用util包的解压功能
-	binaryPath, err := util.ExtractSingboxBinary(result.FilePath, filepath.Join(tempDir, "extracted"))
+	tmpBinaryPath, err := util.ExtractSingboxBinary(result.FilePath, filepath.Join(tempDir, "extracted"))
 	if err != nil {
 		return fmt.Errorf("解压失败: %v\n提示：下载的文件可能已损坏，请重试", err)
 	}
 
 	// 安装二进制文件
-	if err := m.installBinary(binaryPath); err != nil {
+	if err := m.installBinary(tmpBinaryPath); err != nil {
 		return fmt.Errorf("安装失败: %v\n提示：请检查是否有足够的权限", err)
 	}
 
@@ -544,25 +544,12 @@ func (m *SingboxManager) installBinary(srcPath string) error {
 	logger.Info("安装sing-box到: %s", m.binaryPath)
 
 	// 确保安装目录存在
-	if err := os.MkdirAll(filepath.Dir(m.binaryPath), 0755); err != nil {
-		return fmt.Errorf("创建安装目录失败: %v", err)
+	fs := &util.Files{}
+	err := fs.ReplaceBinary(srcPath, m.binaryPath)
+	if err != nil {
+		logger.Error("安装失败: %v", err)
+		return err
 	}
-
-	// 备份现有文件
-	if _, err := os.Stat(m.binaryPath); err == nil {
-		backupPath := m.binaryPath + ".backup"
-		if err := util.CopyFile(m.binaryPath, backupPath); err != nil {
-			logger.Warn("备份现有文件失败: %v", err)
-		} else {
-			logger.Info("已备份现有文件到: %s", backupPath)
-		}
-	}
-
-	// 复制新文件
-	if err := util.CopyFile(srcPath, m.binaryPath); err != nil {
-		return fmt.Errorf("复制文件失败: %v", err)
-	}
-
 	// 设置执行权限
 	if runtime.GOOS != "windows" {
 		if err := os.Chmod(m.binaryPath, 0755); err != nil {

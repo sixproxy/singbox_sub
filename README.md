@@ -10,49 +10,34 @@
 ### 1.下载安装包 && 解压 
 以linux平台X86架构，64位安装包为例子
 
-下载 && 解压
+下载 && 解压 && 进入解压目录
 ```bash
-wget -O sub.tar.gz https://github.com/sixproxy/singbox_sub/releases/download/v1.12.3/sub-linux-amd64.tar.gz \
-&& tar -zxvf sub.tar.gz
+wget -O sub.tar.gz https://github.com/sixproxy/singbox_sub/releases/download/v1.12.4/sub-linux-amd64.tar.gz \
+&& tar -zxvf sub.tar.gz \
+&& cd linux-amd64/
 ```
-
-进入解压目录
-```bash
-cd linux-amd64/
-```
-
 
 ### 2. 配置订阅
-
-更新到最新版
+更新到最新版 && 编辑配置文件
 ```bash
-./sub update
+./sub update && vim config/config.yaml
 ```
 
-编辑配置文件
-```bash
-vim config/config.yaml
-```
-
-**config.yaml 示例:**
+**config.yaml 说明:**
 ```yaml
 subs:
-  - url: "YOUR_SUBSCRIPTION_URL"  # 填写订阅地址
-    insecure: false
-
+  - url: ""                                   # 你VPN订阅地址
+    insecure: false                           # 是否跳过SSL验证
 dns:
-  auto_optimize: true             # 启用智能 CDN 优化
+  auto_optimize: true                         # 自动获取本地DNS和做CDN优化
+github:
+  mirror_url: "https://ghfast.top"            # GitHub镜像地址,用于加速
 ```
 
 ### 3. 运行程序
-给可执行权限
+给可执行权限 && 运行
 ```bash
-chmod +x sub
-```
-
-运行
-```bash
-./sub
+chmod +x sub && ./sub
 ```
 
 **Tips:**

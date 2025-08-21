@@ -4,4 +4,4 @@ subs:
 dns:
   auto_optimize: true                         # 自动获取本地DNS和做CDN优化
 github:
-  mirror_url: "https://ghfast.top"            # GitHub镜像地址,用于加速，如 https://ghfast.top 或 https://mirror.ghproxy.com
+  mirror_url: "https://ghfast.top"            # GitHub镜像地址,用于加速
