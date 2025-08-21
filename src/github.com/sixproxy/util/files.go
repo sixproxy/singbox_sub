@@ -15,7 +15,7 @@ type Files struct {
 }
 
 // extractBinary 解压压缩包并返回二进制文件路径
-func (f *Files) ExtractBinary(archivePath string, tempDir string) (string, error) {
+func (f *Files) ExtractBinary(archivePath string, tempDir string, targetFile string) (string, error) {
 	logger.Info("正在解压更新文件...")
 
 	// 创建解压目录
@@ -27,7 +27,7 @@ func (f *Files) ExtractBinary(archivePath string, tempDir string) (string, error
 	config := ExtractConfig{
 		ArchivePath:   archivePath,
 		DestDir:       extractDir,
-		TargetFiles:   []string{"sing-box"},
+		TargetFiles:   []string{targetFile},
 		CreateDestDir: true,
 	}
 

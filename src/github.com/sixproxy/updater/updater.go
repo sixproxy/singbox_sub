@@ -135,7 +135,7 @@ func (u *Updater) performUpdate(release *version.GitHubRelease) error {
 	fs := &util.Files{}
 
 	// 3. 解压压缩包并获取二进制文件路径
-	tmpBinaryPath, err := fs.ExtractBinary(archivePath, u.tempDir)
+	tmpBinaryPath, err := fs.ExtractBinary(archivePath, u.tempDir, "sub")
 	if err != nil {
 		return fmt.Errorf("解压更新文件失败: %v", err)
 	}
