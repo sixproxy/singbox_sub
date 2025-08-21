@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"singbox_sub/src/github.com/sixproxy/logger"
+	"singbox_sub/src/github.com/sixproxy/model"
 	"strconv"
 	"strings"
 	"time"
@@ -383,31 +384,30 @@ type LocationInfo struct {
 	ISP     string `json:"isp"`    // 运营商
 }
 
-
 // GetOptimalClientSubnet 获取优化的client_subnet值
 func GetOptimalClientSubnet() string {
 	// 1. 尝试获取真实的公网IP和地理位置
 	location, err := getRealLocation()
 	if err != nil {
 		logger.NetworkWarn("获取地理位置失败: %v，使用默认策略", err)
-		return GetDefaultClientSubnet()
+		return model.GetDefaultClientSubnet()
 	}
 
 	// 2. 根据城市和运营商获取精确的网段
-	if subnet := GetCityISPSubnet(location.City, location.ISP); subnet != "" {
+	if subnet := model.GetCityISPSubnet(location.City, location.ISP); subnet != "" {
 		logger.NetworkInfo("检测到位置: %s %s，使用client_subnet: %s", location.City, location.ISP, subnet)
 		return subnet
 	}
 
 	// 3. 如果精确匹配失败，尝试模糊匹配
-	if subnet := GetFallbackSubnet(location); subnet != "" {
+	if subnet := model.GetFallbackSubnet(location); subnet != "" {
 		logger.NetworkInfo("使用备选匹配: %s，client_subnet: %s", location.City, subnet)
 		return subnet
 	}
 
 	// 4. 默认策略
 	logger.NetworkInfo("无法精确匹配，使用默认client_subnet")
-	return GetDefaultClientSubnet()
+	return model.GetDefaultClientSubnet()
 }
 
 // getRealLocation 获取真实的公网IP地理位置
@@ -426,26 +426,26 @@ func getRealLocation() (*LocationInfo, error) {
 
 		if err == nil && location != nil {
 			originalCity := location.City
-			
+
 			// 先处理空字段的情况
 			if originalCity == "" {
 				logger.NetworkWarn("API返回的城市字段为空，尝试从省份推导")
 				// 尝试从省份/地区推导城市
 				if location.Region != "" {
-					originalCity = InferCityFromRegion(location.Region)
+					originalCity = model.InferCityFromRegion(location.Region)
 					location.City = originalCity
 					logger.NetworkInfo("从省份 '%s' 推导城市: %s", location.Region, originalCity)
 				}
 			}
-			
+
 			// 进行城市名映射
-			mappedCity := GetCityNameCH(originalCity)
-			
+			mappedCity := model.GetCityNameCH(originalCity)
+
 			// 详细的调试信息
 			logger.NetworkInfo("地理位置查询成功 - 服务: %s", service)
 			logger.NetworkInfo("原始数据 - 城市:'%s', 省份:'%s', ISP:'%s', IP:'%s'", originalCity, location.Region, location.ISP, location.IP)
 			logger.NetworkInfo("城市映射: '%s' -> '%s'", originalCity, mappedCity)
-			
+
 			// 验证映射结果
 			if mappedCity != "" && mappedCity != originalCity {
 				// 映射成功
@@ -458,11 +458,11 @@ func getRealLocation() (*LocationInfo, error) {
 			} else {
 				// 城市字段完全为空，使用ISP推导
 				logger.NetworkWarn("城市信息完全缺失，尝试从ISP推导默认城市")
-				location.City = GetDefaultCityByISP(location.ISP)
+				location.City = model.GetDefaultCityByISP(location.ISP)
 			}
-			
+
 			logger.NetworkInfo("最终结果 - 城市:'%s', ISP:'%s', 省份:'%s'", location.City, location.ISP, location.Region)
-			
+
 			// 确保关键字段不为空
 			if location.City == "" {
 				logger.NetworkWarn("城市字段仍为空，使用默认值")
@@ -472,7 +472,7 @@ func getRealLocation() (*LocationInfo, error) {
 				logger.NetworkWarn("ISP字段为空，使用默认值")
 				location.ISP = "电信" // 使用默认ISP
 			}
-			
+
 			return location, nil
 		}
 		logger.NetworkWarn("地理位置查询服务 %s 失败: %v", service, err)
@@ -511,7 +511,7 @@ func queryLocationService(client *http.Client, serviceURL string) (*LocationInfo
 				return nil, fmt.Errorf("服务返回错误: %s", reason)
 			}
 		}
-		
+
 		// 检查ip-api.com的状态字段
 		if statusVal, exists := errorCheck["status"]; exists {
 			if status, ok := statusVal.(string); ok && status != "success" {
@@ -556,7 +556,7 @@ func parseIPAPIResponse(body []byte) (*LocationInfo, error) {
 		Country: response.Country,
 		Region:  response.RegionName,
 		City:    response.City,
-		ISP:     NormalizeISPName(response.ISP),
+		ISP:     model.NormalizeISPName(response.ISP),
 	}, nil
 }
 
@@ -579,8 +579,8 @@ func parseIPAPICoResponse(body []byte) (*LocationInfo, error) {
 		IP:      response.IP,
 		Country: response.Country,
 		Region:  response.Region,
-		City:    GetCityNameCH(response.City),
-		ISP:     NormalizeISPName(response.Org),
+		City:    model.GetCityNameCH(response.City),
+		ISP:     model.NormalizeISPName(response.Org),
 	}, nil
 }
 
@@ -609,12 +609,9 @@ func parseIPSBResponse(body []byte) (*LocationInfo, error) {
 		Country: response.Country,
 		Region:  response.Region,
 		City:    response.City,
-		ISP:     NormalizeISPName(isp),
+		ISP:     model.NormalizeISPName(isp),
 	}, nil
 }
-
-
-
 
 // GetISPName 获取当前运营商名称 (更新为使用新的地理位置API)
 func GetISPName() string {
@@ -648,7 +645,6 @@ func GetISPName() string {
 	return "本地网络"
 }
 
-
 // isPrivateIP 检查是否为私有IP地址
 func isPrivateIP(ip string) bool {
 	parsedIP := net.ParseIP(ip)
@@ -675,7 +671,6 @@ func isPrivateIP(ip string) bool {
 
 	return false
 }
-
 
 // GetInternalIP 获取本机的内网IP地址
 func GetInternalIP() string {
