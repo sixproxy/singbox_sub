@@ -20,14 +20,14 @@ jobs:
             output: sub
 
           # Windows
-          - goos: windows
-            goarch: amd64
-            output: sub.exe
+#          - goos: windows
+#            goarch: amd64
+#            output: sub.exe
 
           # macOS
-          - goos: darwin
-            goarch: arm64
-            output: sub
+#          - goos: darwin
+#            goarch: arm64
+#            output: sub
 
     steps:
       - name: Checkout code
