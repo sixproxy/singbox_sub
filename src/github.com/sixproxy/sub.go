@@ -87,7 +87,8 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 
-	// 1.加载模版并合并YAML配置
+	// 1.加载模版并合并YAML配置（包含GitHub镜像处理）
+	logger.Info("🔄 加载配置文件...")
 	cfg, err := model.LoadConfigWithYAML(
 		"config/template-v1.12.json",
 		"config/config.yaml",
@@ -388,7 +389,7 @@ func deployLinuxConfig() {
 	logger.Info("配置文件已成功部署到: %s", targetFile)
 }
 
-// startSingBoxService 启动sing-box服务
+// startSingBoxService 启动sing-box服务（带失败检测和回滚）
 func startSingBoxService() {
 	logger.Info("正在启动sing-box服务...")
 	
@@ -404,6 +405,17 @@ func startSingBoxService() {
 		return
 	}
 	
+	// 备份当前配置
+	configBackupPath := "/etc/sing-box/config.json.backup"
+	configPath := "/etc/sing-box/config.json"
+	if _, err := os.Stat(configPath); err == nil {
+		if err := copyFile(configPath, configBackupPath); err != nil {
+			logger.Warn("备份配置文件失败: %v", err)
+		} else {
+			logger.Debug("已备份配置文件到: %s", configBackupPath)
+		}
+	}
+	
 	logger.Debug("使用shell: %s", shell)
 	cmd := exec.Command(shell, scriptPath)
 	output, err := cmd.CombinedOutput()
@@ -411,12 +423,179 @@ func startSingBoxService() {
 	if err != nil {
 		logger.Error("启动sing-box服务失败: %v", err)
 		logger.Debug("脚本输出: %s", string(output))
+		
+		// 尝试回滚配置并重新启动
+		handleStartupFailure(configBackupPath, configPath)
+		return
+	}
+	
+	logger.Info("sing-box服务启动命令已执行")
+	if len(output) > 0 {
+		logger.Debug("脚本输出: %s", string(output))
+	}
+	
+	// 等待并检查启动状态
+	if !checkSingboxStartupStatus() {
+		logger.Error("sing-box启动失败，正在回滚配置...")
+		handleStartupFailure(configBackupPath, configPath)
 	} else {
-		logger.Info("sing-box服务已启动")
-		if len(output) > 0 {
-			logger.Debug("脚本输出: %s", string(output))
+		logger.Info("✅ sing-box服务启动成功")
+		// 清理备份文件
+		if err := os.Remove(configBackupPath); err == nil {
+			logger.Debug("已清理配置备份文件")
 		}
 	}
+}
+
+// checkSingboxStartupStatus 检查sing-box启动状态
+func checkSingboxStartupStatus() bool {
+	logger.Info("检查sing-box启动状态...")
+	
+	// 等待几秒钟让服务完全启动
+	maxWait := 10 * time.Second
+	checkInterval := 1 * time.Second
+	waited := time.Duration(0)
+	
+	for waited < maxWait {
+		time.Sleep(checkInterval)
+		waited += checkInterval
+		
+		// 检查进程是否存在
+		if isSingBoxRunning() {
+			logger.Debug("sing-box进程运行中...")
+			
+			// 尝试获取版本信息来验证服务状态
+			manager := updater.NewSingboxManager()
+			if manager.IsInstalled() {
+				if version, err := manager.GetInstalledVersion(); err == nil {
+					logger.Debug("sing-box版本验证成功: %s", version.Version)
+					
+					// 额外等待2秒确保服务完全稳定
+					time.Sleep(2 * time.Second)
+					
+					// 最后检查进程是否仍在运行
+					if isSingBoxRunning() {
+						return true
+					} else {
+						logger.Warn("sing-box进程意外停止")
+						return false
+					}
+				} else {
+					logger.Debug("版本验证失败，可能尚未完全启动: %v", err)
+				}
+			}
+		} else {
+			logger.Debug("sing-box进程未运行...")
+		}
+	}
+	
+	logger.Error("等待 %.0f 秒后，sing-box仍未成功启动", maxWait.Seconds())
+	return false
+}
+
+// handleStartupFailure 处理启动失败，回滚配置并重启
+func handleStartupFailure(backupPath, configPath string) {
+	logger.Error("🚨 sing-box启动失败，开始故障处理...")
+	
+	// 1. 显示失败原因（尝试获取服务日志）
+	showSingboxFailureReason()
+	
+	// 2. 停止可能存在的异常进程
+	stopSingBoxService()
+	time.Sleep(2 * time.Second)
+	
+	// 3. 检查是否有备份配置可以回滚
+	if _, err := os.Stat(backupPath); err == nil {
+		logger.Info("🔄 回滚到之前的配置...")
+		
+		if err := copyFile(backupPath, configPath); err != nil {
+			logger.Error("回滚配置失败: %v", err)
+			return
+		}
+		
+		logger.Info("配置已回滚，尝试重新启动sing-box...")
+		
+		// 4. 尝试使用回滚的配置重新启动
+		shell := getAvailableShell()
+		if shell != "" {
+			scriptPath := "bash/start_singbox.sh"
+			cmd := exec.Command(shell, scriptPath)
+			output, err := cmd.CombinedOutput()
+			
+			if err != nil {
+				logger.Error("使用回滚配置启动失败: %v", err)
+				logger.Debug("输出: %s", string(output))
+			} else {
+				logger.Info("正在验证回滚配置启动状态...")
+				time.Sleep(3 * time.Second)
+				
+				if isSingBoxRunning() {
+					logger.Info("✅ 使用回滚配置成功启动sing-box")
+					// 清理失败的配置文件（重命名为.failed）
+					failedConfigPath := configPath + ".failed"
+					if newConfigExists(configPath, backupPath) {
+						// 只有当新配置与备份配置不同时才保存失败配置
+						copyFile(configPath, failedConfigPath)
+						logger.Info("失败的配置已保存为: %s", failedConfigPath)
+					}
+				} else {
+					logger.Error("❌ 即使使用回滚配置也无法启动sing-box")
+				}
+			}
+		}
+	} else {
+		logger.Warn("⚠️  没有找到配置备份，无法自动回滚")
+		logger.Info("请手动检查配置文件: %s", configPath)
+	}
+}
+
+// showSingboxFailureReason 显示sing-box启动失败的具体原因
+func showSingboxFailureReason() {
+	logger.Info("🔍 分析启动失败原因...")
+	
+	// 1. 检查配置文件语法
+	configPath := "/etc/sing-box/config.json"
+	if _, err := os.Stat(configPath); err == nil {
+		// 尝试使用sing-box检查配置
+		manager := updater.NewSingboxManager()
+		if manager.IsInstalled() {
+			cmd := exec.Command(manager.GetBinaryPath(), "check", "-c", configPath)
+			output, err := cmd.CombinedOutput()
+			
+			if err != nil {
+				logger.Error("❌ 配置文件检查失败:")
+				logger.Error(string(output))
+			} else {
+				logger.Info("✅ 配置文件语法正确")
+			}
+		}
+	}
+	
+	// 2. 检查系统资源
+	logger.Debug("检查系统资源...")
+	
+	// 3. 尝试获取系统日志中的错误信息
+	if runtime.GOOS == "linux" {
+		// 尝试从systemd日志获取错误
+		cmd := exec.Command("journalctl", "-u", "sing-box", "--no-pager", "-n", "10")
+		output, err := cmd.CombinedOutput()
+		if err == nil && len(output) > 0 {
+			logger.Info("📋 最近的系统日志:")
+			logger.Info(string(output))
+		}
+	}
+}
+
+// newConfigExists 检查新配置是否与备份配置不同
+func newConfigExists(configPath, backupPath string) bool {
+	configData, err1 := os.ReadFile(configPath)
+	backupData, err2 := os.ReadFile(backupPath)
+	
+	if err1 != nil || err2 != nil {
+		return true // 如果无法读取，假设它们不同
+	}
+	
+	return string(configData) != string(backupData)
 }
 
 // copyFile 拷贝文件

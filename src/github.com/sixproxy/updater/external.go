@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"singbox_sub/src/github.com/sixproxy/logger"
+	"singbox_sub/src/github.com/sixproxy/model"
 	"singbox_sub/src/github.com/sixproxy/util"
 	"strings"
 	"time"
@@ -57,30 +58,145 @@ func NewSingboxManager() *SingboxManager {
 		serviceName:  SINGBOX_SERVICE_NAME,
 	}
 
-	// 根据平台设置路径
+	// 首先尝试检测用户实际安装的sing-box路径
+	m.detectSingboxPath()
+
+	return m
+}
+
+// detectSingboxPath 检测sing-box实际安装路径
+func (m *SingboxManager) detectSingboxPath() {
+	// 1. 优先检查PATH中的sing-box
+	if pathBinary, err := exec.LookPath("sing-box"); err == nil {
+		m.binaryPath = pathBinary
+		m.installDir = filepath.Dir(pathBinary)
+		m.setConfigPath()
+		logger.Debug("在PATH中找到sing-box: %s", pathBinary)
+		return
+	}
+
+	// 2. 检查macOS Homebrew路径
+	if runtime.GOOS == "darwin" {
+		homebrewPaths := []string{
+			"/opt/homebrew/bin/sing-box",    // Apple Silicon
+			"/usr/local/bin/sing-box",       // Intel
+		}
+		
+		for _, path := range homebrewPaths {
+			if _, err := os.Stat(path); err == nil {
+				m.binaryPath = path
+				m.installDir = filepath.Dir(path)
+				m.setConfigPath()
+				logger.Debug("找到Homebrew安装的sing-box: %s", path)
+				return
+			}
+		}
+	}
+
+	// 3. 检查其他常见安装位置
+	commonPaths := m.getCommonInstallPaths()
+	for _, path := range commonPaths {
+		if _, err := os.Stat(path); err == nil {
+			m.binaryPath = path
+			m.installDir = filepath.Dir(path)
+			m.setConfigPath()
+			logger.Debug("找到sing-box: %s", path)
+			return
+		}
+	}
+
+	// 4. 如果都没找到，使用默认路径
+	m.setDefaultPaths()
+	logger.Debug("未找到现有安装，使用默认路径: %s", m.binaryPath)
+}
+
+// getCommonInstallPaths 获取常见的安装路径
+func (m *SingboxManager) getCommonInstallPaths() []string {
+	var paths []string
+	
+	switch runtime.GOOS {
+	case "linux":
+		paths = []string{
+			"/usr/local/bin/sing-box",
+			"/usr/bin/sing-box",
+			"/opt/sing-box/sing-box",
+			filepath.Join(os.Getenv("HOME"), ".local/bin/sing-box"),
+		}
+	case "darwin":
+		paths = []string{
+			"/usr/local/bin/sing-box",
+			"/opt/homebrew/bin/sing-box",
+			"/opt/local/bin/sing-box",
+			filepath.Join(os.Getenv("HOME"), ".local/bin/sing-box"),
+		}
+	case "windows":
+		programFiles := os.Getenv("PROGRAMFILES")
+		if programFiles == "" {
+			programFiles = "C:\\Program Files"
+		}
+		programFilesX86 := os.Getenv("PROGRAMFILES(X86)")
+		if programFilesX86 == "" {
+			programFilesX86 = "C:\\Program Files (x86)"
+		}
+		
+		paths = []string{
+			filepath.Join(programFiles, "sing-box", "sing-box.exe"),
+			filepath.Join(programFilesX86, "sing-box", "sing-box.exe"),
+			filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "sing-box", "sing-box.exe"),
+		}
+	}
+	
+	return paths
+}
+
+// setDefaultPaths 设置默认路径
+func (m *SingboxManager) setDefaultPaths() {
 	switch runtime.GOOS {
 	case "linux":
 		m.installDir = "/usr/local/bin"
 		m.binaryPath = filepath.Join(m.installDir, "sing-box")
-		m.configPath = "/etc/sing-box/config.json"
 	case "darwin":
-		// macOS默认使用Homebrew管理
-		m.binaryPath = "/opt/homebrew/bin/sing-box" // Apple Silicon
-		if _, err := os.Stat(m.binaryPath); os.IsNotExist(err) {
-			m.binaryPath = "/usr/local/bin/sing-box" // Intel
+		// macOS优先使用Homebrew路径
+		if util.IsHomebrewInstalled() {
+			m.binaryPath = "/opt/homebrew/bin/sing-box" // Apple Silicon
+			if _, err := os.Stat("/usr/local/bin/brew"); err == nil {
+				m.binaryPath = "/usr/local/bin/sing-box" // Intel
+			}
+		} else {
+			m.installDir = "/usr/local/bin"
+			m.binaryPath = filepath.Join(m.installDir, "sing-box")
 		}
-		m.configPath = "/usr/local/etc/sing-box/config.json"
 	case "windows":
 		m.installDir = "C:\\Program Files\\sing-box"
 		m.binaryPath = filepath.Join(m.installDir, "sing-box.exe")
-		m.configPath = filepath.Join(m.installDir, "config.json")
 	default:
 		m.installDir = "/usr/local/bin"
 		m.binaryPath = filepath.Join(m.installDir, "sing-box")
+	}
+	
+	m.setConfigPath()
+}
+
+// setConfigPath 根据二进制路径设置配置路径
+func (m *SingboxManager) setConfigPath() {
+	switch runtime.GOOS {
+	case "linux":
+		m.configPath = "/etc/sing-box/config.json"
+	case "darwin":
+		if strings.Contains(m.binaryPath, "homebrew") {
+			if strings.Contains(m.binaryPath, "/opt/homebrew/") {
+				m.configPath = "/opt/homebrew/etc/sing-box/config.json"
+			} else {
+				m.configPath = "/usr/local/etc/sing-box/config.json"
+			}
+		} else {
+			m.configPath = "/usr/local/etc/sing-box/config.json"
+		}
+	case "windows":
+		m.configPath = filepath.Join(filepath.Dir(m.binaryPath), "config.json")
+	default:
 		m.configPath = "/etc/sing-box/config.json"
 	}
-
-	return m
 }
 
 // GetInstalledVersion 获取已安装的sing-box版本
@@ -115,13 +231,17 @@ func (m *SingboxManager) GetInstalledVersion() (*SingboxVersion, error) {
 
 // GetLatestVersion 获取最新版本信息
 func (m *SingboxManager) GetLatestVersion() (*SingboxRelease, error) {
+	// 获取GitHub配置
+	githubConfig := model.GetGitHubConfig()
+	
 	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", SINGBOX_GITHUB_REPO)
 
+	logger.Debug("正在请求GitHub API: %s", url)
+	
+	// 临时禁用镜像功能，直接使用原始API
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-
-	logger.Debug("正在请求GitHub API: %s", url)
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("无法连接到GitHub API，请检查网络连接: %v", err)
@@ -158,8 +278,89 @@ func (m *SingboxManager) GetLatestVersion() (*SingboxRelease, error) {
 		return nil, fmt.Errorf("GitHub API响应中没有找到下载资源")
 	}
 
+	// 转换下载URL为镜像URL
+	for i := range release.Assets {
+		if githubConfig.MirrorURL != "" {
+			release.Assets[i].BrowserDownloadURL = m.convertToMirrorURL(release.Assets[i].BrowserDownloadURL, githubConfig.MirrorURL)
+		}
+	}
+
 	logger.Debug("成功获取版本信息: %s，包含 %d 个资源", release.TagName, len(release.Assets))
 	return &release, nil
+}
+
+// fetchWithMirror 使用镜像获取数据
+func (m *SingboxManager) fetchWithMirror(url string, githubConfig *model.GitHubConfig) (*http.Response, error) {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	var lastErr error
+	
+	// 尝试使用主要镜像
+	if githubConfig.MirrorURL != "" {
+		mirrorURL := m.convertAPIURL(url, githubConfig.MirrorURL)
+		logger.Debug("尝试使用主镜像: %s", mirrorURL)
+		
+		resp, err := client.Get(mirrorURL)
+		if err == nil && resp.StatusCode < 400 {
+			logger.Debug("使用主镜像成功")
+			return resp, nil
+		} else {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			lastErr = err
+			logger.Debug("主镜像访问失败: %v", err)
+		}
+	}
+
+	// 尝试备用镜像
+	if len(githubConfig.FallbackMirrors) > 0 {
+		for _, mirror := range githubConfig.FallbackMirrors {
+			mirrorURL := m.convertAPIURL(url, mirror)
+			logger.Debug("尝试使用备用镜像: %s", mirrorURL)
+			
+			resp, err := client.Get(mirrorURL)
+			if err == nil && resp.StatusCode < 400 {
+				logger.Debug("使用备用镜像成功: %s", mirror)
+				return resp, nil
+			} else {
+				if resp != nil {
+					resp.Body.Close()
+				}
+				lastErr = err
+				logger.Debug("备用镜像 %s 访问失败: %v", mirror, err)
+			}
+		}
+	}
+
+	// 最后尝试原始URL
+	logger.Debug("尝试使用原始GitHub API: %s", url)
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("所有镜像都失败，原始URL也失败: %v (最后一个镜像错误: %v)", err, lastErr)
+	}
+
+	return resp, nil
+}
+
+// convertAPIURL 转换API URL为镜像URL
+func (m *SingboxManager) convertAPIURL(originalURL, mirrorBase string) string {
+	if strings.HasSuffix(mirrorBase, "/") {
+		return mirrorBase + originalURL
+	} else {
+		return mirrorBase + "/" + originalURL
+	}
+}
+
+// convertToMirrorURL 转换下载URL为镜像URL
+func (m *SingboxManager) convertToMirrorURL(originalURL, mirrorBase string) string {
+	if strings.HasSuffix(mirrorBase, "/") {
+		return mirrorBase + originalURL
+	} else {
+		return mirrorBase + "/" + originalURL
+	}
 }
 
 // IsInstalled 检查sing-box是否已安装

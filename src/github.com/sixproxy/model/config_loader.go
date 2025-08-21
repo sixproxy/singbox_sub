@@ -15,6 +15,7 @@ type UserConfig struct {
 	Subs         []Sub         `yaml:"subs,omitempty"`
 	Experimental *Experimental `yaml:"experimental,omitempty"`
 	DNS          *UserDNS      `yaml:"dns,omitempty"`
+	GitHub       *GitHubConfig `yaml:"github,omitempty"`
 }
 
 // UserDNS 用户DNS配置
@@ -23,6 +24,36 @@ type UserDNS struct {
 	Strategy     string `yaml:"strategy,omitempty"`
 	Final        string `yaml:"final,omitempty"`
 	AutoOptimize bool   `yaml:"auto_optimize,omitempty"` // 是否自动优化client_subnet
+}
+
+// GitHubConfig GitHub配置
+type GitHubConfig struct {
+	MirrorURL       string   `yaml:"mirror_url,omitempty"`       // 主要镜像地址
+	FallbackMirrors []string `yaml:"fallback_mirrors,omitempty"` // 备用镜像列表
+}
+
+// 全局GitHub配置
+var globalGitHubConfig *GitHubConfig
+
+// GetGitHubConfig 获取GitHub配置
+func GetGitHubConfig() *GitHubConfig {
+	if globalGitHubConfig == nil {
+		// 返回默认配置
+		return &GitHubConfig{
+			MirrorURL: "",
+			FallbackMirrors: []string{
+				"https://ghproxy.link/",
+				"https://mirror.ghproxy.com/",
+				"https://ghfast.top/",
+			},
+		}
+	}
+	return globalGitHubConfig
+}
+
+// SetGitHubConfig 设置GitHub配置
+func SetGitHubConfig(config *GitHubConfig) {
+	globalGitHubConfig = config
 }
 
 // LoadConfig 加载JSON配置文件
@@ -37,34 +68,49 @@ func LoadConfig(path string) (*Config, error) {
 
 // LoadConfigWithYAML 加载模板配置并用YAML配置覆盖
 func LoadConfigWithYAML(templatePath, yamlConfigPath string) (*Config, error) {
-	// 1. 加载模板配置
+	// 1. 检查YAML配置文件是否存在
+	var userConfig UserConfig
+	if _, err := os.Stat(yamlConfigPath); os.IsNotExist(err) {
+		logger.ConfigWarn("YAML配置文件不存在: %s，使用模板默认配置", yamlConfigPath)
+	} else {
+		// 加载YAML配置
+		yamlData, err := os.ReadFile(yamlConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("读取YAML配置文件失败: %v", err)
+		}
+
+		err = yaml.Unmarshal(yamlData, &userConfig)
+		if err != nil {
+			return nil, fmt.Errorf("解析YAML配置文件失败: %v", err)
+		}
+	}
+
+	// 2. 处理GitHub镜像配置（在加载模板之前）
+	if userConfig.GitHub != nil {
+		if err := updateTemplateMirrors(templatePath, userConfig.GitHub); err != nil {
+			logger.Warn("更新模板镜像失败: %v", err)
+		}
+	}
+
+	// 3. 加载（可能已更新的）模板配置
 	template, err := LoadConfig(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("加载模板配置失败: %v", err)
 	}
 
-	// 2. 检查YAML配置文件是否存在
-	if _, err := os.Stat(yamlConfigPath); os.IsNotExist(err) {
-		logger.ConfigWarn("YAML配置文件不存在: %s，使用模板默认配置", yamlConfigPath)
-		return template, nil
-	}
-
-	// 3. 加载YAML配置
-	yamlData, err := os.ReadFile(yamlConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("读取YAML配置文件失败: %v", err)
-	}
-
-	var userConfig UserConfig
-	err = yaml.Unmarshal(yamlData, &userConfig)
-	if err != nil {
-		return nil, fmt.Errorf("解析YAML配置文件失败: %v", err)
-	}
-
-	// 4. 覆盖配置
+	// 4. 覆盖其他配置
 	mergeYAMLConfig(template, &userConfig)
 
 	return template, nil
+}
+
+// updateTemplateMirrors 更新模板中的GitHub镜像
+func updateTemplateMirrors(templatePath string, githubConfig *GitHubConfig) error {
+	// 创建模板镜像管理器
+	tmm := util.NewTemplateMirrorManager(templatePath)
+	
+	// 更新模板镜像
+	return tmm.UpdateTemplateMirrors(githubConfig.MirrorURL)
 }
 
 // mergeYAMLConfig 将YAML配置覆盖到模板配置中
@@ -113,5 +159,17 @@ func mergeYAMLConfig(template *Config, userConfig *UserConfig) {
 			}
 		}
 
+	}
+
+	// 5. 处理GitHub配置
+	if userConfig.GitHub != nil {
+		SetGitHubConfig(userConfig.GitHub)
+		logger.ConfigInfo("已加载GitHub镜像配置")
+		if userConfig.GitHub.MirrorURL != "" {
+			logger.ConfigInfo("主要镜像: %s", userConfig.GitHub.MirrorURL)
+		}
+		if len(userConfig.GitHub.FallbackMirrors) > 0 {
+			logger.ConfigInfo("备用镜像数量: %d", len(userConfig.GitHub.FallbackMirrors))
+		}
 	}
 }
