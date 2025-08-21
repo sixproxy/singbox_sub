@@ -19,15 +19,16 @@ import (
 func main() {
 	// 0.解析命令行参数
 	var (
-		targetOS    = flag.String("os", "auto", "目标操作系统 (auto/darwin/linux/windows/all)")
-		verbose     = flag.Bool("v", false, "详细输出 (启用DEBUG日志)")
-		help        = flag.Bool("h", false, "显示帮助信息")
-		versionFlag = flag.Bool("version", false, "显示版本信息")
-		update      = flag.Bool("update", false, "检查并更新到最新版本")
+		targetOS         = flag.String("os", "auto", "目标操作系统 (auto/darwin/linux/windows/all)")
+		verbose          = flag.Bool("v", false, "详细输出 (启用DEBUG日志)")
+		help             = flag.Bool("h", false, "显示帮助信息")
+		versionFlag      = flag.Bool("version", false, "显示版本信息")
+		update           = flag.Bool("update", false, "检查并更新到最新版本")
+		skipSingboxCheck = flag.Bool("skip-singbox-check", false, "跳过sing-box版本检查")
 	)
 	flag.Parse()
 
-	// 处理非标志参数命令 (如 "sub version", "sub update")
+	// 处理非标志参数命令 (如 "sub version", "sub update", "sub box")
 	args := flag.Args()
 	if len(args) > 0 {
 		switch args[0] {
@@ -36,6 +37,13 @@ func main() {
 			return
 		case "update":
 			handleUpdate()
+			return
+		case "box":
+			handleBoxCommand(args[1:])
+			return
+		case "install-singbox":
+			// 保持向后兼容
+			handleSingboxInstall()
 			return
 		case "help":
 			printUsage()
@@ -64,6 +72,11 @@ func main() {
 	if *verbose {
 		logger.SetLevel(logger.DEBUG)
 		logger.Debug("已启用详细输出模式")
+	}
+
+	// 0.3.检查sing-box状态 (如果没有跳过检查)
+	if !*skipSingboxCheck {
+		checkSingboxStatus()
 	}
 
 	// 0.5.Linux系统预处理 - 停止sing-box服务
@@ -143,12 +156,13 @@ func printUsage() {
 	logger.Info("用法: %s [选项]", "sub")
 	logger.Info("")
 	logger.Info("选项:")
-	logger.Info("  -os string    目标操作系统 (默认: auto)")
-	logger.Info("                可选值: auto, darwin, linux, windows, all")
-	logger.Info("  -v            详细输出模式 (启用DEBUG日志)")
-	logger.Info("  -h            显示此帮助信息")
-	logger.Info("  -version      显示版本信息")
-	logger.Info("  -update       检查并更新到最新版本")
+	logger.Info("  -os string              目标操作系统 (默认: auto)")
+	logger.Info("                          可选值: auto, darwin, linux, windows, all")
+	logger.Info("  -v                      详细输出模式 (启用DEBUG日志)")
+	logger.Info("  -h                      显示此帮助信息")
+	logger.Info("  -version                显示版本信息")
+	logger.Info("  -update                 检查并更新到最新版本")
+	logger.Info("  -skip-singbox-check     跳过sing-box版本检查")
 	logger.Info("")
 	logger.Info("Linux自动化功能 (仅在Linux系统上生效):")
 	logger.Info("  • 程序启动时自动停止sing-box服务")
@@ -165,8 +179,19 @@ func printUsage() {
 	logger.Info("  ./sub -v                         # 详细输出模式")
 	logger.Info("  ./sub version                    # 查看版本信息")
 	logger.Info("  ./sub update                     # 检查并更新程序")
+	logger.Info("  ./sub box                        # 显示sing-box状态")
+	logger.Info("  ./sub box install                # 安装/更新sing-box")
+	logger.Info("  ./sub install-singbox            # 安装/更新sing-box (兼容)")
 	logger.Info("  ./sub -version                   # 查看版本信息 (标志形式)")
 	logger.Info("  ./sub -update                    # 检查并更新程序 (标志形式)")
+	logger.Info("  ./sub -skip-singbox-check        # 跳过sing-box检查运行")
+	logger.Info("")
+	logger.Info("sing-box管理功能:")
+	logger.Info("  • 自动检查sing-box安装状态和版本")
+	logger.Info("  • 从GitHub下载最新稳定版本")
+	logger.Info("  • Linux/Windows: 直接下载二进制文件安装")
+	logger.Info("  • macOS: 优先使用Homebrew管理 (brew install/upgrade sing-box)")
+	logger.Info("  • 支持版本比较和自动更新提醒")
 	logger.Info("")
 	logger.Info("Linux生产环境:")
 	logger.Info("  ./sub                            # 完整自动化部署")
@@ -430,5 +455,137 @@ func printControlPanelURL(cfg *model.Config) {
 	if cfg.Experimental.ClashAPI.ExternalController != "" {
 		controlURL := fmt.Sprintf("http://%s/ui/#/proxies", cfg.Experimental.ClashAPI.ExternalController)
 		logger.Success("控制面板地址：%s", controlURL)
+	}
+}
+
+// handleBoxCommand 处理box子命令
+func handleBoxCommand(args []string) {
+	action := "status"
+	if len(args) > 0 {
+		action = args[0]
+	}
+
+	manager := updater.NewSingboxManager()
+
+	switch action {
+	case "install", "i":
+		if err := manager.CheckAndInstall(); err != nil {
+			logger.Error("sing-box安装失败: %v", err)
+			os.Exit(1)
+		}
+	case "update", "u":
+		if err := manager.CheckAndInstall(); err != nil {
+			logger.Error("sing-box更新失败: %v", err)
+			os.Exit(1)
+		}
+	case "status", "s":
+		showSingboxStatus(manager)
+	case "version", "v":
+		showSingboxVersion(manager)
+	case "help", "h":
+		printBoxUsage()
+	default:
+		logger.Error("未知的box命令: %s", action)
+		printBoxUsage()
+		os.Exit(1)
+	}
+}
+
+// handleSingboxInstall 处理sing-box安装命令 (向后兼容)
+func handleSingboxInstall() {
+	manager := updater.NewSingboxManager()
+	if err := manager.CheckAndInstall(); err != nil {
+		logger.Error("sing-box安装/更新失败: %v", err)
+		os.Exit(1)
+	}
+}
+
+// showSingboxStatus 显示sing-box状态
+func showSingboxStatus(manager *updater.SingboxManager) {
+	logger.Info("🔍 sing-box状态检查")
+	
+	if manager.IsInstalled() {
+		if version, err := manager.GetInstalledVersion(); err == nil {
+			logger.Info("✅ 已安装版本: %s", version.Version)
+		} else {
+			logger.Warn("⚠️ 已安装但无法获取版本: %v", err)
+		}
+		
+		if hasUpdate, latest, err := manager.IsUpdateAvailable(); err == nil {
+			if hasUpdate {
+				logger.Info("🆕 有新版本可用: %s", latest.TagName)
+				logger.Info("💡 运行 './sub box install' 更新")
+			} else {
+				logger.Info("✅ 已是最新版本")
+			}
+		} else {
+			logger.Warn("⚠️ 检查更新失败: %v", err)
+		}
+	} else {
+		logger.Info("❌ sing-box未安装")
+		logger.Info("💡 运行 './sub box install' 安装")
+	}
+}
+
+// showSingboxVersion 显示sing-box版本信息
+func showSingboxVersion(manager *updater.SingboxManager) {
+	if !manager.IsInstalled() {
+		logger.Error("❌ sing-box未安装")
+		os.Exit(1)
+	}
+	
+	version, err := manager.GetInstalledVersion()
+	if err != nil {
+		logger.Error("获取版本失败: %v", err)
+		os.Exit(1)
+	}
+	
+	logger.Info("sing-box version %s", version.Version)
+	logger.Info("Binary path: %s", manager.GetBinaryPath())
+	logger.Info("Config path: %s", manager.GetConfigPath())
+}
+
+// printBoxUsage 显示box命令帮助
+func printBoxUsage() {
+	logger.Info("=== sing-box管理命令 ===")
+	logger.Info("用法: sub box <命令>")
+	logger.Info("")
+	logger.Info("可用命令:")
+	logger.Info("  install, i     安装或更新sing-box")
+	logger.Info("  update, u      更新sing-box (同install)")
+	logger.Info("  status, s      显示sing-box状态")
+	logger.Info("  version, v     显示sing-box版本信息")
+	logger.Info("  help, h        显示此帮助信息")
+	logger.Info("")
+	logger.Info("示例:")
+	logger.Info("  ./sub box                    # 显示状态")
+	logger.Info("  ./sub box install            # 安装sing-box")
+	logger.Info("  ./sub box status             # 检查状态")
+	logger.Info("  ./sub box version            # 显示版本")
+}
+
+// checkSingboxStatus 检查sing-box状态
+func checkSingboxStatus() {
+	manager := updater.NewSingboxManager()
+	
+	if manager.IsInstalled() {
+		version, err := manager.GetInstalledVersion()
+		if err != nil {
+			logger.Warn("无法获取sing-box版本信息: %v", err)
+		} else {
+			logger.Info("检测到sing-box版本: %s", version.Version)
+		}
+		
+		// 检查是否有更新
+		hasUpdate, latest, err := manager.IsUpdateAvailable()
+		if err != nil {
+			logger.Warn("检查sing-box更新失败: %v", err)
+		} else if hasUpdate {
+			logger.Info("发现sing-box新版本: %s", latest.TagName)
+			logger.Info("提示: 使用 './sub install-singbox' 更新到最新版本")
+		}
+	} else {
+		logger.Warn("未检测到sing-box，建议先安装sing-box")
+		logger.Info("提示: 使用 './sub install-singbox' 安装最新版本")
 	}
 }
