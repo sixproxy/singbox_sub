@@ -13,6 +13,10 @@ import (
 	"singbox_sub/src/github.com/sixproxy/logger"
 	"singbox_sub/src/github.com/sixproxy/model"
 	"singbox_sub/src/github.com/sixproxy/util"
+	"singbox_sub/src/github.com/sixproxy/util/comp"
+	"singbox_sub/src/github.com/sixproxy/util/files"
+	http2 "singbox_sub/src/github.com/sixproxy/util/https"
+	"singbox_sub/src/github.com/sixproxy/util/shells"
 	"strings"
 	"time"
 )
@@ -460,7 +464,7 @@ func (m *SingBoxService) installFromGitHub() error {
 	}()
 
 	// 使用util包的下载功能
-	downloadConfig := util.DownloadConfig{
+	downloadConfig := http2.DownloadConfig{
 		URL:          downloadURL,
 		DestDir:      tempDir,
 		Timeout:      10 * time.Minute,
@@ -468,13 +472,13 @@ func (m *SingBoxService) installFromGitHub() error {
 		ShowProgress: true,
 	}
 
-	result, err := util.DownloadFile(downloadConfig)
+	result, err := http2.DownloadFile(downloadConfig)
 	if err != nil {
 		return fmt.Errorf("下载失败: %v", err)
 	}
 
 	// 使用util包的解压功能
-	tmpBinaryPath, err := util.ExtractSingboxBinary(result.FilePath, filepath.Join(tempDir, "extracted"))
+	tmpBinaryPath, err := comp.ExtractSingboxBinary(result.FilePath, filepath.Join(tempDir, "extracted"))
 	if err != nil {
 		return fmt.Errorf("解压失败: %v\n提示：下载的文件可能已损坏，请重试", err)
 	}
@@ -535,8 +539,7 @@ func (m *SingBoxService) installBinary(srcPath string) error {
 	logger.Info("安装sing-box到: %s", m.binaryPath)
 
 	// 确保安装目录存在
-	fs := &util.Files{}
-	err := fs.ReplaceBinary(srcPath, m.binaryPath)
+	err := files.ReplaceBinary(srcPath, m.binaryPath)
 	if err != nil {
 		logger.Error("安装失败: %v", err)
 		return err
@@ -741,14 +744,14 @@ func (m *SingBoxService) HandleStartupFailure(backupPath, configPath string) {
 	m.ShowSingboxFailureReason()
 
 	// 2. 停止可能存在的异常进程
-	m.StopSingBox()
+	shells.StopSingBox()
 	time.Sleep(2 * time.Second)
 
 	// 3. 检查是否有备份配置可以回滚
 	if _, err := os.Stat(backupPath); err == nil {
 		logger.Info("🔄 回滚到之前的配置...")
 
-		if err := util.CopyFile(backupPath, configPath); err != nil {
+		if err := files.CopyFile(backupPath, configPath); err != nil {
 			logger.Error("回滚配置失败: %v", err)
 			return
 		}
@@ -769,13 +772,13 @@ func (m *SingBoxService) HandleStartupFailure(backupPath, configPath string) {
 				logger.Info("正在验证回滚配置启动状态...")
 				time.Sleep(3 * time.Second)
 
-				if m.IsSingBoxRunning() {
+				if shells.IsSingBoxRunning() {
 					logger.Info("✅ 使用回滚配置成功启动sing-box")
 					// 清理失败的配置文件（重命名为.failed）
 					failedConfigPath := configPath + ".failed"
 					if util.CheckNewConfigIsSameOldConfig(configPath, backupPath) {
 						// 只有当新配置与备份配置不同时才保存失败配置
-						util.CopyFile(configPath, failedConfigPath)
+						files.CopyFile(configPath, failedConfigPath)
 						logger.Info("失败的配置已保存为: %s", failedConfigPath)
 					}
 				} else {
@@ -786,64 +789,6 @@ func (m *SingBoxService) HandleStartupFailure(backupPath, configPath string) {
 	} else {
 		logger.Warn("⚠️  没有找到配置备份，无法自动回滚")
 		logger.Info("请手动检查配置文件: %s", configPath)
-	}
-}
-
-// startSingBox 启动sing-box服务（带失败检测和回滚）
-func (m *SingBoxService) StartSingBox() {
-	logger.Info("正在启动sing-box服务...")
-
-	scriptPath := "bash/start_singbox.sh"
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		logger.Warn("启动脚本不存在: %s，跳过启动步骤", scriptPath)
-		return
-	}
-
-	shell := util.GetAvailableShell()
-	if shell == "" {
-		logger.Error("未找到可用的shell执行器，跳过启动步骤")
-		return
-	}
-
-	// 备份当前配置
-	configBackupPath := "/etc/sing-box/config.json.backup"
-	configPath := "/etc/sing-box/config.json"
-	if _, err := os.Stat(configPath); err == nil {
-		if err := util.CopyFile(configPath, configBackupPath); err != nil {
-			logger.Warn("备份配置文件失败: %v", err)
-		} else {
-			logger.Debug("已备份配置文件到: %s", configBackupPath)
-		}
-	}
-
-	logger.Debug("使用shell: %s", shell)
-	cmd := exec.Command(shell, scriptPath)
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		logger.Error("启动sing-box服务失败: %v", err)
-		logger.Debug("脚本输出: %s", string(output))
-
-		// 尝试回滚配置并重新启动
-		m.HandleStartupFailure(configBackupPath, configPath)
-		return
-	}
-
-	logger.Info("sing-box服务启动命令已执行")
-	if len(output) > 0 {
-		logger.Debug("脚本输出: %s", string(output))
-	}
-
-	// 等待并检查启动状态
-	if !m.CheckSingboxStartupStatus() {
-		logger.Error("sing-box启动失败，正在回滚配置...")
-		m.HandleStartupFailure(configBackupPath, configPath)
-	} else {
-		logger.Info("✅ sing-box服务启动成功")
-		// 清理备份文件
-		if err := os.Remove(configBackupPath); err == nil {
-			logger.Debug("已清理配置备份文件")
-		}
 	}
 }
 
@@ -861,7 +806,7 @@ func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 		waited += checkInterval
 
 		// 检查进程是否存在
-		if m.IsSingBoxRunning() {
+		if shells.IsSingBoxRunning() {
 			logger.Debug("sing-box进程运行中...")
 
 			// 尝试获取版本信息来验证服务状态
@@ -873,7 +818,7 @@ func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 					time.Sleep(2 * time.Second)
 
 					// 最后检查进程是否仍在运行
-					if m.IsSingBoxRunning() {
+					if shells.IsSingBoxRunning() {
 						return true
 					} else {
 						logger.Warn("sing-box进程意外停止")
@@ -890,51 +835,4 @@ func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 
 	logger.Error("等待 %.0f 秒后，sing-box仍未成功启动", maxWait.Seconds())
 	return false
-}
-
-// isSingBoxRunning 检查sing-box进程是否仍在运行
-func (m *SingBoxService) IsSingBoxRunning() bool {
-	// 使用pgrep命令检查sing-box进程
-	cmd := exec.Command("pgrep", "sing-box")
-	err := cmd.Run()
-	// 如果pgrep找到进程，返回码为0；找不到进程返回码为1
-	return err == nil
-}
-
-// 停止sing-box服务
-func (m *SingBoxService) StopSingBox() {
-	logger.Info("正在停止sing-box服务...")
-
-	scriptPath := "bash/stop_singbox.sh"
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		logger.Warn("停止脚本不存在: %s，跳过停止步骤", scriptPath)
-		return
-	}
-
-	shell := util.GetAvailableShell()
-	if shell == "" {
-		logger.Error("未找到可用的shell执行器，跳过停止步骤")
-		return
-	}
-
-	logger.Debug("使用shell: %s", shell)
-	cmd := exec.Command(shell, scriptPath)
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		logger.Warn("停止sing-box服务失败: %v", err)
-		logger.Debug("脚本输出: %s", string(output))
-	} else {
-		logger.Info("sing-box服务停止命令已执行")
-		if len(output) > 0 {
-			logger.Debug("脚本输出: %s", string(output))
-		}
-
-		// 验证服务是否真的停止了
-		if m.IsSingBoxRunning() {
-			logger.Warn("sing-box进程可能仍在运行，建议手动检查")
-		} else {
-			logger.Info("确认sing-box服务已完全停止")
-		}
-	}
 }

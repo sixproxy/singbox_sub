@@ -12,7 +12,7 @@
 
 下载 && 解压 && 进入解压目录
 ```bash
-wget -O sub.tar.gz https://github.com/sixproxy/singbox_sub/releases/download/v1.12.4/sub-linux-amd64.tar.gz \
+wget -O sub.tar.gz https://github.com/sixproxy/singbox_sub/releases/download/v1.2.9/sub-linux-amd64.tar.gz \
 && tar -zxvf sub.tar.gz \
 && cd linux-amd64/
 ```

@@ -10,8 +10,8 @@ import (
 	"singbox_sub/src/github.com/sixproxy/model"
 	"singbox_sub/src/github.com/sixproxy/protocol"
 	"singbox_sub/src/github.com/sixproxy/service"
-	"singbox_sub/src/github.com/sixproxy/updater"
-	"singbox_sub/src/github.com/sixproxy/util"
+	"singbox_sub/src/github.com/sixproxy/util/files"
+	"singbox_sub/src/github.com/sixproxy/util/shells"
 	"singbox_sub/src/github.com/sixproxy/version"
 	"time"
 )
@@ -83,7 +83,7 @@ func main() {
 
 	// 停止sing-box服务
 	if runtime.GOOS == "linux" && (*targetOS == "auto" || *targetOS == "linux") {
-		boxService.StopSingBox()
+		shells.StopSingBox()
 		// 等待1秒确保sing-box完全停止，避免网络检测时仍通过代理
 		logger.Info("等待sing-box服务完全停止...")
 		time.Sleep(1 * time.Second)
@@ -138,7 +138,7 @@ func delegateParse(nodes []string) []string {
 
 // handleUpdate 处理更新命令
 func handleUpdate() {
-	updaterInstance, err := updater.NewUpdater()
+	updaterInstance, err := service.NewUpdaterService()
 	if err != nil {
 		logger.Error("创建更新器失败: %v", err)
 		return
@@ -219,7 +219,7 @@ func generateSystemConfig(cfg *service.SubService, boxService *service.SingBoxSe
 			// 如果是在Linux系统上运行，执行额外的部署步骤
 			if currentOS == "linux" {
 				deployLinuxConfig()
-				boxService.StartSingBox()
+				shells.StartSingBox()
 			}
 		}
 
@@ -307,7 +307,7 @@ func deployLinuxConfig() {
 
 	// 拷贝配置文件
 	logger.Debug("拷贝配置文件: %s -> %s", sourceFile, targetFile)
-	err = util.CopyFile(sourceFile, targetFile)
+	err = files.CopyFile(sourceFile, targetFile)
 	if err != nil {
 		logger.Error("拷贝配置文件失败: %v", err)
 		return

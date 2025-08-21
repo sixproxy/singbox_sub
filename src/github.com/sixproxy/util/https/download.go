@@ -1,4 +1,4 @@
-package util
+package https
 
 import (
 	"crypto/sha256"
@@ -125,8 +125,10 @@ func downloadFileOnce(config DownloadConfig) (*DownloadResult, error) {
 		if filename == "" || filename == "." {
 			if strings.Contains(config.URL, ".zip") {
 				filename = "download.zip"
-			} else {
+			} else if strings.Contains(config.URL, ".tar.gz") || strings.Contains(config.URL, ".tgz") {
 				filename = "download.tar.gz"
+			} else {
+				return nil, fmt.Errorf("不支持的下载文件格式: %s", config.URL)
 			}
 		}
 	}

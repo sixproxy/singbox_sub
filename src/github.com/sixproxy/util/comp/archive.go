@@ -1,4 +1,4 @@
-package util
+package comp
 
 import (
 	"archive/tar"
@@ -77,7 +77,7 @@ func extractZip(config ExtractConfig) (*ExtractResult, error) {
 		}
 
 		fileName := filepath.Base(file.Name)
-		
+
 		// 检查是否为目标文件
 		if !isTargetFile(fileName, config.TargetFiles) {
 			continue
@@ -146,7 +146,7 @@ func extractTarGz(config ExtractConfig) (*ExtractResult, error) {
 		}
 
 		fileName := filepath.Base(header.Name)
-		
+
 		// 检查是否为目标文件
 		if !isTargetFile(fileName, config.TargetFiles) {
 			continue

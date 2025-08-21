@@ -1,4 +1,4 @@
-package util
+package files
 
 import (
 	"errors"
@@ -8,14 +8,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"singbox_sub/src/github.com/sixproxy/logger"
+	"singbox_sub/src/github.com/sixproxy/util/comp"
 	"strings"
 )
 
-type Files struct {
-}
-
 // extractBinary 解压压缩包并返回二进制文件路径
-func (f *Files) ExtractBinary(archivePath string, tempDir string, targetFile string) (string, error) {
+func ExtractBinary(archivePath string, tempDir string, targetFile string) (string, error) {
 	logger.Info("正在解压更新文件...")
 
 	// 创建解压目录
@@ -24,14 +22,14 @@ func (f *Files) ExtractBinary(archivePath string, tempDir string, targetFile str
 		return "", fmt.Errorf("创建解压目录失败: %v", err)
 	}
 
-	config := ExtractConfig{
+	config := comp.ExtractConfig{
 		ArchivePath:   archivePath,
 		DestDir:       extractDir,
 		TargetFiles:   []string{targetFile},
 		CreateDestDir: true,
 	}
 
-	archive, err := ExtractArchive(config)
+	archive, err := comp.ExtractArchive(config)
 	if err != nil {
 		return "解压失败", err
 	}
@@ -41,7 +39,7 @@ func (f *Files) ExtractBinary(archivePath string, tempDir string, targetFile str
 }
 
 // backupCurrentBinary 备份当前程序
-func (f *Files) BackupFile(src string, dst string) (string, error) {
+func BackupFile(src string, dst string) (string, error) {
 	logger.Info("备份当前程序...")
 
 	backupPath := dst
@@ -63,18 +61,18 @@ func (f *Files) BackupFile(src string, dst string) (string, error) {
 }
 
 // replaceCurrentBinary 替换当前程序
-func (f *Files) ReplaceBinary(srcBinaryPath string, dstBinaryPath string) error {
+func ReplaceBinary(srcBinaryPath string, dstBinaryPath string) error {
 	logger.Info("正在替换程序...")
 
 	if runtime.GOOS == "windows" {
-		return f.replaceOnWindows(srcBinaryPath, dstBinaryPath)
+		return replaceOnWindows(srcBinaryPath, dstBinaryPath)
 	} else {
-		return f.replaceOnUnix(srcBinaryPath, dstBinaryPath)
+		return replaceOnUnix(srcBinaryPath, dstBinaryPath)
 	}
 }
 
 // replaceOnWindows Windows平台的替换策略
-func (f *Files) replaceOnWindows(srcBinaryPath string, dstBinaryPath string) error {
+func replaceOnWindows(srcBinaryPath string, dstBinaryPath string) error {
 	// Windows下将当前exe重命名为.old
 	tempOldPath := dstBinaryPath + ".old"
 
@@ -97,7 +95,7 @@ func (f *Files) replaceOnWindows(srcBinaryPath string, dstBinaryPath string) err
 }
 
 // replaceOnUnix Unix平台的替换策略
-func (f *Files) replaceOnUnix(srcBinaryPath string, dstBinaryPath string) error {
+func replaceOnUnix(srcBinaryPath string, dstBinaryPath string) error {
 	// 尝试直接替换
 	err := CopyFile(srcBinaryPath, dstBinaryPath)
 	if err == nil {
@@ -109,13 +107,13 @@ func (f *Files) replaceOnUnix(srcBinaryPath string, dstBinaryPath string) error 
 		return nil
 	} else if strings.Contains(err.Error(), "text file busy") || errors.Is(err, os.ErrPermission) {
 		logger.Warn("程序正在运行，使用重命名策略进行更新...")
-		return f.replaceWithRename(srcBinaryPath, dstBinaryPath)
+		return replaceWithRename(srcBinaryPath, dstBinaryPath)
 	}
 	return fmt.Errorf("复制新程序失败: %v", err)
 }
 
 // replaceWithRename 使用重命名策略替换程序
-func (f *Files) replaceWithRename(srcBinaryPath string, dstBinaryPath string) error {
+func replaceWithRename(srcBinaryPath string, dstBinaryPath string) error {
 	// 1. 将当前程序重命名为.old
 	oldPath := dstBinaryPath + ".old"
 	if err := os.Rename(dstBinaryPath, oldPath); err != nil {
@@ -143,7 +141,7 @@ func (f *Files) replaceWithRename(srcBinaryPath string, dstBinaryPath string) er
 }
 
 // restoreBackup 恢复备份
-func (f *Files) RestoreBackup(srcPath string, dstPath string) error {
+func RestoreBackup(srcPath string, dstPath string) error {
 	logger.Info("正在恢复备份...")
 
 	if err := CopyFile(srcPath, dstPath); err != nil {
@@ -183,7 +181,7 @@ func CopyFile(src, dst string) error {
 }
 
 // Cleanup 清理临时文件
-func (f *Files) Cleanup(tempDir string) error {
+func Cleanup(tempDir string) error {
 	if tempDir != "" {
 		err := os.RemoveAll(tempDir)
 		if err != nil {
