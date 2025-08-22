@@ -16,7 +16,7 @@ import (
 	"singbox_sub/src/github.com/sixproxy/util/comp"
 	"singbox_sub/src/github.com/sixproxy/util/files"
 	http2 "singbox_sub/src/github.com/sixproxy/util/https"
-	"singbox_sub/src/github.com/sixproxy/util/shells"
+	"singbox_sub/src/github.com/sixproxy/util/singboxs"
 	"strings"
 	"time"
 )
@@ -744,7 +744,7 @@ func (m *SingBoxService) HandleStartupFailure(backupPath, configPath string) {
 	m.ShowSingboxFailureReason()
 
 	// 2. 停止可能存在的异常进程
-	shells.StopSingBox()
+	singboxs.StopSingBox()
 	time.Sleep(2 * time.Second)
 
 	// 3. 检查是否有备份配置可以回滚
@@ -772,7 +772,7 @@ func (m *SingBoxService) HandleStartupFailure(backupPath, configPath string) {
 				logger.Info("正在验证回滚配置启动状态...")
 				time.Sleep(3 * time.Second)
 
-				if shells.IsSingBoxRunning() {
+				if singboxs.IsSingBoxRunning() {
 					logger.Info("✅ 使用回滚配置成功启动sing-box")
 					// 清理失败的配置文件（重命名为.failed）
 					failedConfigPath := configPath + ".failed"
@@ -792,7 +792,6 @@ func (m *SingBoxService) HandleStartupFailure(backupPath, configPath string) {
 	}
 }
 
-// checkSingboxStartupStatus 检查sing-box启动状态
 func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 	logger.Info("检查sing-box启动状态...")
 
@@ -806,7 +805,7 @@ func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 		waited += checkInterval
 
 		// 检查进程是否存在
-		if shells.IsSingBoxRunning() {
+		if singboxs.IsSingBoxRunning() {
 			logger.Debug("sing-box进程运行中...")
 
 			// 尝试获取版本信息来验证服务状态
@@ -818,7 +817,7 @@ func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 					time.Sleep(2 * time.Second)
 
 					// 最后检查进程是否仍在运行
-					if shells.IsSingBoxRunning() {
+					if singboxs.IsSingBoxRunning() {
 						return true
 					} else {
 						logger.Warn("sing-box进程意外停止")
@@ -835,4 +834,8 @@ func (m *SingBoxService) CheckSingboxStartupStatus() bool {
 
 	logger.Error("等待 %.0f 秒后，sing-box仍未成功启动", maxWait.Seconds())
 	return false
+}
+
+func (m *SingBoxService) DeployLinuxConfig() {
+	singboxs.DeployLinuxConfig()
 }

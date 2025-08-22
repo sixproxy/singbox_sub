@@ -10,6 +10,7 @@ import (
 	"singbox_sub/src/github.com/sixproxy/constant"
 	"singbox_sub/src/github.com/sixproxy/logger"
 	"singbox_sub/src/github.com/sixproxy/model"
+	"singbox_sub/src/github.com/sixproxy/protocol"
 	"singbox_sub/src/github.com/sixproxy/util"
 	"strings"
 )
@@ -20,7 +21,7 @@ type SubService struct {
 	Cfg *model.Config
 }
 
-func (sub *SubService) nodesWithHttpGet(delegateParse DelegateParseNodesFunc) []string {
+func (sub *SubService) nodesWithHttpGet() []string {
 	// 检查订阅地址是否有效
 	if len(sub.Cfg.Subs) == 0 {
 		logger.Error("没有配置订阅地址")
@@ -89,10 +90,10 @@ func (sub *SubService) nodesWithHttpGet(delegateParse DelegateParseNodesFunc) []
 	return configNodes
 }
 
-func (sub *SubService) RenderTemplate(delegateParse DelegateParseNodesFunc) error {
+func (sub *SubService) RenderTemplate() error {
 
 	// 解析模版并渲染
-	proxyNode := sub.nodesWithHttpGet(delegateParse)
+	proxyNode := sub.nodesWithHttpGet()
 
 	for i := range sub.Cfg.Outbounds {
 		// 获取第i行 出站模版
@@ -310,4 +311,31 @@ func matchPatterns(tag string, patterns []string) bool {
 		}
 	}
 	return false
+}
+
+// 按协议解析节点
+func delegateParse(nodes []string) []string {
+	c := make(chan string, 50)
+	for _, node := range nodes {
+		node := node
+		go func(n string) {
+			res, err := protocol.Parse(n)
+			if err != nil {
+				logger.ParseWarn("节点解析失败: %v", err)
+				c <- "" // 返回空字符串而不是错误信息
+			} else {
+				c <- res
+			}
+		}(node)
+	}
+
+	configNodes := make([]string, 0)
+	for i := 0; i < len(nodes); i++ {
+		result := <-c
+		if result != "" { // 过滤掉空结果（解析失败的节点）
+			configNodes = append(configNodes, result)
+		}
+	}
+	logger.ParseInfo("成功解析 %d/%d 个节点", len(configNodes), len(nodes))
+	return configNodes
 }

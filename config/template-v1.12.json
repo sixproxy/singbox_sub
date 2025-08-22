@@ -44,7 +44,6 @@
     { "tag": "Google",      "type": "selector", "outbounds":   ["US","NodeSelect","ChainProxy", "Select","AutoSelect"] ,"default":"NodeSelect","interrupt_exist_connections": true },
     { "tag": "Github",      "type": "selector", "outbounds":   ["SG","NodeSelect","ChainProxy", "Select","AutoSelect", "DirectConn"],"default":"NodeSelect", "interrupt_exist_connections": true},
     { "tag": "Telegram",    "type": "selector", "outbounds": ["NodeSelect","ChainProxy", "Select",  "AutoSelect"], "default":"AutoSelect"},
-    { "tag": "Others",     "type": "selector", "outbounds":  ["NodeSelect","ChainProxy", "AutoSelect", "HK", "JP","DirectConn"], "default":"AutoSelect"},
     { "tag": "Microsoft",   "type": "selector", "outbounds": ["SG","NodeSelect", "ChainProxy",  "DirectConn"] },
     { "tag": "Apple",       "type": "selector", "outbounds": ["DirectConn","AutoSelect" ] },
     { "tag": "Paypal",      "type": "selector", "outbounds": ["ChainProxy", "Select", "AutoSelect","DirectConn"]},
@@ -58,9 +57,11 @@
     { "tag": "Epic",        "type": "selector", "outbounds": ["AutoSelect-HK","HK","AutoSelect-US","US","DirectConn"],"default":"AutoSelect-HK"},
     { "tag": "PlayStation", "type": "selector", "outbounds": ["AutoSelect-HK","HK","AutoSelect-JP","JP","US"],"default":"AutoSelect-HK"},
     { "tag": "Xbox",        "type": "selector", "outbounds": ["AutoSelect-HK","HK","AutoSelect-SG","SG","US"],"default":"AutoSelect-HK"},
+    { "tag": "BTC",         "type": "selector", "outbounds": ["AutoSelect-SG","SG","AutoSelect-JP","JP","DirectConn","NodeSelect"],"default":"AutoSelect-SG"},
     { "tag": "Douyin",      "type": "selector", "outbounds": ["DirectConn","block"]  },
     { "tag": "WeChatVideo", "type": "selector", "outbounds": ["DirectConn","block"]  },
     { "tag": "HoK",         "type": "selector", "outbounds": ["HK","JP","SG"] },
+    { "tag": "Others",     "type": "selector", "outbounds":  ["NodeSelect","ChainProxy", "AutoSelect-SG", "HK", "JP","DirectConn"], "default":"AutoSelect-SG"},
     { "tag": "AutoSelect-HK", "type": "urltest", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["香港|港|HK|Hong Kong|🇭🇰"] }], "url": "https://cp.cloudflare.com/generate_204", "interval": "8m", "tolerance": 150 },
     { "tag": "AutoSelect-JP", "type": "urltest", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["日本|日|JP|Japan|🇯🇵"] }], "url": "https://cp.cloudflare.com/generate_204", "interval": "8m", "tolerance": 150 },
     { "tag": "AutoSelect-US", "type": "urltest", "outbounds": ["{all}"], "filter": [{ "action": "include", "keywords": ["美国|美國|美|US|USA|America|🇺🇸"] }], "url": "https://cp.cloudflare.com/generate_204", "interval": "8m", "tolerance": 150 },
@@ -112,7 +113,7 @@
       {"action": "route"     , "rule_set": "geosite-hok", "outbound": "HoK"},
       {"action": "route"     , "domain": ["clash.razord.top", "yacd.metacubex.one", "yacd.haishan.me", "d.metacubex.one"], "outbound": "DirectConn"},
       {"action": "route"     , "domain_suffix": ["z-lib.gs","missav.com","missav.ws"], "outbound": "NodeSelect"},
-      {"action": "route"     , "domain_suffix": ["okex.com", "okx.com", "oklink.com", "okx-dns.com", "okx-dns1.com", "okx-dns2.com", "binance.com","binance.info","binancecnt.com"], "outbound": "DirectConn"},
+      {"action": "route"     , "rule_set": "geosite-cryptocurrency", "outbound": "BTC"},
       {"action": "route"     , "rule_set": "geosite-ctm_cn", "outbound": "DirectConn"},
       {"action": "route"     , "rule_set": "geosite-private", "outbound": "DirectConn"},
       {"action": "route"     , "rule_set": "geosite-chat", "domain_suffix": ["grok.com"], "outbound": "OpenAI"},
@@ -162,7 +163,8 @@
       { "tag": "geosite-wx-shortvideo",   "type": "remote", "format": "binary", "url": "{{mirror_url}}/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/wx_shortvideo.srs", "download_detour": "DirectConn" },
       { "tag": "geosite-douyin",          "type": "remote", "format": "binary", "url": "{{mirror_url}}/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/douyin.srs", "download_detour": "DirectConn" },
       { "tag": "geosite-paypal",          "type": "remote", "format": "binary", "url": "{{mirror_url}}/https://raw.github.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/paypal.srs", "download_detour": "DirectConn"},
-      { "tag": "geosite-hok",             "type": "remote", "format": "binary", "url": "{{mirror_url}}/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/hok.srs", "download_detour": "DirectConn"}
+      { "tag": "geosite-hok",             "type": "remote", "format": "binary", "url": "{{mirror_url}}/https://raw.github.com/sixproxy/rulesets/refs/heads/main/rule/hok.srs", "download_detour": "DirectConn"},
+      { "tag": "geosite-cryptocurrency",  "type": "remote", "format": "binary", "url": "{{mirror_url}}/https://raw.github.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-cryptocurrency.srs", "download_detour": "DirectConn"}
     ]
   }
 }

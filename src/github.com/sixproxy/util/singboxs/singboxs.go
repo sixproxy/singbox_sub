@@ -1,9 +1,10 @@
-package shells
+package singboxs
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"singbox_sub/src/github.com/sixproxy/logger"
 	"singbox_sub/src/github.com/sixproxy/util"
 	"singbox_sub/src/github.com/sixproxy/util/files"
@@ -92,4 +93,42 @@ func StopSingBox() {
 			logger.Info("确认sing-box服务已完全停止")
 		}
 	}
+}
+
+func DeployLinuxConfig() {
+	logger.Info("正在部署Linux配置文件...")
+
+	sourceFile := "linux_config.json"
+	targetDir := "/etc/sing-box"
+	targetFile := filepath.Join(targetDir, "config.json")
+
+	// 检查源文件是否存在
+	if _, err := os.Stat(sourceFile); os.IsNotExist(err) {
+		logger.Error("源配置文件不存在: %s", sourceFile)
+		return
+	}
+
+	// 创建目标目录（如果不存在）
+	logger.Debug("创建配置目录: %s", targetDir)
+	err := os.MkdirAll(targetDir, 0755)
+	if err != nil {
+		logger.Error("创建配置目录失败: %v", err)
+		return
+	}
+
+	// 拷贝配置文件
+	logger.Debug("拷贝配置文件: %s -> %s", sourceFile, targetFile)
+	err = files.CopyFile(sourceFile, targetFile)
+	if err != nil {
+		logger.Error("拷贝配置文件失败: %v", err)
+		return
+	}
+
+	// 设置文件权限
+	err = os.Chmod(targetFile, 0644)
+	if err != nil {
+		logger.Warn("设置配置文件权限失败: %v", err)
+	}
+
+	logger.Info("配置文件已成功部署到: %s", targetFile)
 }

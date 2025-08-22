@@ -4,14 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"singbox_sub/src/github.com/sixproxy/logger"
 	"singbox_sub/src/github.com/sixproxy/model"
-	"singbox_sub/src/github.com/sixproxy/protocol"
 	"singbox_sub/src/github.com/sixproxy/service"
-	"singbox_sub/src/github.com/sixproxy/util/files"
-	"singbox_sub/src/github.com/sixproxy/util/shells"
+	"singbox_sub/src/github.com/sixproxy/util/singboxs"
 	"singbox_sub/src/github.com/sixproxy/version"
 	"time"
 )
@@ -83,7 +80,7 @@ func main() {
 
 	// 停止sing-box服务
 	if runtime.GOOS == "linux" && (*targetOS == "auto" || *targetOS == "linux") {
-		shells.StopSingBox()
+		singboxs.StopSingBox()
 		// 等待1秒确保sing-box完全停止，避免网络检测时仍通过代理
 		logger.Info("等待sing-box服务完全停止...")
 		time.Sleep(1 * time.Second)
@@ -99,7 +96,7 @@ func main() {
 
 	// 订阅处理逻辑
 	var subService = &service.SubService{Cfg: template}
-	err = subService.RenderTemplate(delegateParse)
+	err = subService.RenderTemplate()
 	if err != nil {
 		logger.Error("渲染模板失败: %v", err)
 	}
@@ -107,33 +104,6 @@ func main() {
 	// 生成配置
 	generateSystemConfig(subService, boxService, *targetOS, userService.UserConfig.GitHub.MirrorURL)
 
-}
-
-// 按协议解析节点
-func delegateParse(nodes []string) []string {
-	c := make(chan string, 50)
-	for _, node := range nodes {
-		node := node
-		go func(n string) {
-			res, err := protocol.Parse(n)
-			if err != nil {
-				logger.ParseWarn("节点解析失败: %v", err)
-				c <- "" // 返回空字符串而不是错误信息
-			} else {
-				c <- res
-			}
-		}(node)
-	}
-
-	configNodes := make([]string, 0)
-	for i := 0; i < len(nodes); i++ {
-		result := <-c
-		if result != "" { // 过滤掉空结果（解析失败的节点）
-			configNodes = append(configNodes, result)
-		}
-	}
-	logger.ParseInfo("成功解析 %d/%d 个节点", len(configNodes), len(nodes))
-	return configNodes
 }
 
 // handleUpdate 处理更新命令
@@ -218,8 +188,8 @@ func generateSystemConfig(cfg *service.SubService, boxService *service.SingBoxSe
 
 			// 如果是在Linux系统上运行，执行额外的部署步骤
 			if currentOS == "linux" {
-				deployLinuxConfig()
-				shells.StartSingBox()
+				boxService.DeployLinuxConfig()
+				singboxs.StartSingBox()
 			}
 		}
 
@@ -281,45 +251,6 @@ func generateSystemConfig(cfg *service.SubService, boxService *service.SingBoxSe
 
 		logger.Info("所有配置文件生成完成，请根据你的系统选择合适的配置")
 	}
-}
-
-// deployLinuxConfig 部署Linux配置文件
-func deployLinuxConfig() {
-	logger.Info("正在部署Linux配置文件...")
-
-	sourceFile := "linux_config.json"
-	targetDir := "/etc/sing-box"
-	targetFile := filepath.Join(targetDir, "config.json")
-
-	// 检查源文件是否存在
-	if _, err := os.Stat(sourceFile); os.IsNotExist(err) {
-		logger.Error("源配置文件不存在: %s", sourceFile)
-		return
-	}
-
-	// 创建目标目录（如果不存在）
-	logger.Debug("创建配置目录: %s", targetDir)
-	err := os.MkdirAll(targetDir, 0755)
-	if err != nil {
-		logger.Error("创建配置目录失败: %v", err)
-		return
-	}
-
-	// 拷贝配置文件
-	logger.Debug("拷贝配置文件: %s -> %s", sourceFile, targetFile)
-	err = files.CopyFile(sourceFile, targetFile)
-	if err != nil {
-		logger.Error("拷贝配置文件失败: %v", err)
-		return
-	}
-
-	// 设置文件权限
-	err = os.Chmod(targetFile, 0644)
-	if err != nil {
-		logger.Warn("设置配置文件权限失败: %v", err)
-	}
-
-	logger.Info("配置文件已成功部署到: %s", targetFile)
 }
 
 // printControlPanelURL 打印控制面板地址
